@@ -2,8 +2,6 @@ package com.budget.buoy.authentication;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
-import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +11,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.budget.buoy.service.TokenService;
 import jakarta.validation.Valid;

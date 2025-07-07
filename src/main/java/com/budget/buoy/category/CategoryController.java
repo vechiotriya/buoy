@@ -6,6 +6,7 @@ import java.security.SecureRandom;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,14 +49,17 @@ public class CategoryController {
     // Add a new category for the current user
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/categories/add")
-    public Category addCategory(@Valid @RequestBody Category category) {
+    public ResponseEntity<?> addCategory(@Valid @RequestBody Category category) {
         String userId = getCurrentUser();
+        if(categoryRepository.existsByNameAndUserId(category.name(), userId)) {
+            return ResponseEntity.badRequest().body("Category with this name already exists for the user");
+        }
         Category newCategory = new Category(
                 NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
                 userId,
                 category.name(),
                 new BigDecimal(category.budget().doubleValue()).setScale(2, RoundingMode.HALF_UP),
                 category.version());
-        return categoryRepository.save(newCategory);
+        return ResponseEntity.ok("Category added for: "+newCategory.userId());
     }
 }
