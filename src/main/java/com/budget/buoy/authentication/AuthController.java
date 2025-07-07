@@ -1,6 +1,7 @@
 package com.budget.buoy.authentication;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -12,6 +13,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.budget.buoy.service.TokenService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -56,7 +59,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Email already exists");
         }
       // Encode the password before saving
-        user = new User(UUID.randomUUID().toString(),user.username(), user.email(), passwordEncoder.encode(user.password()),new BigDecimal("0.00")
+        user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),user.username(), user.email(), passwordEncoder.encode(user.password()),new BigDecimal("0.00")
 ,user.version());
         userRepository.save(user);
         return ResponseEntity.ok("User registered successfully");

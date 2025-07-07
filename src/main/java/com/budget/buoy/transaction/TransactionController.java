@@ -1,11 +1,12 @@
 package com.budget.buoy.transaction;
 
-import org.springframework.web.bind.annotation.RestController;
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.budget.buoy.authentication.User;
 import com.budget.buoy.authentication.UserRepository;
 import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.util.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
@@ -106,7 +107,7 @@ public class TransactionController {
     public void addTransaction(@Valid @RequestBody Transaction transaction) {
         String user = getCurrentUser();
         Transaction transactionWithEmail = new Transaction(
-                transaction.id(),
+                NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
                 transaction.transactionType(),
                 new BigDecimal(transaction.amount().toBigInteger()),
                 user,

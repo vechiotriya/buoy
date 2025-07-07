@@ -14,7 +14,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record Transaction(
     @Id
-    Integer id,
+    String id,
     TransactionType transactionType,
     BigDecimal amount,
     String userId,  // FK to users table

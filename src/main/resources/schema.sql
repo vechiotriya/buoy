@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS Users (
 
 
 CREATE TABLE IF NOT EXISTS Transaction (
-    id SERIAL NOT NULL,
+    id VARCHAR(255),
     transaction_type VARCHAR(255) NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS Transaction (
 
 -- Categories Table
 CREATE TABLE IF NOT EXISTS categories (
-    id SERIAL PRIMARY KEY,
+    id VaRCHAR(255),
     user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) UNIQUE NOT NULL,
     budget DECIMAL(12, 2) NOT NULL,

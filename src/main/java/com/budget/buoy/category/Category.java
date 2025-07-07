@@ -10,7 +10,7 @@ import jakarta.validation.constraints.NotNull;
 
 @Table("categories")
 public record Category(
-        @Id Integer id,
+        @Id String id,
         String userId, // FK to users table
         @NotNull String name,
         @NotNull BigDecimal budget,

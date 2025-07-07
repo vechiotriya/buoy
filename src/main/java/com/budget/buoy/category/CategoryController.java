@@ -2,6 +2,7 @@ package com.budget.buoy.category;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.SecureRandom;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.budget.buoy.authentication.UserRepository;
 
 import jakarta.validation.Valid;
@@ -49,7 +51,7 @@ public class CategoryController {
     public Category addCategory(@Valid @RequestBody Category category) {
         String userId = getCurrentUser();
         Category newCategory = new Category(
-                category.id(),
+                NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
                 userId,
                 category.name(),
                 new BigDecimal(category.budget().doubleValue()).setScale(2, RoundingMode.HALF_UP),
