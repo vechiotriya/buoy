@@ -1,11 +1,14 @@
 package com.budget.buoy.transaction;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 
+import jakarta.annotation.Generated;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 
 
 
@@ -13,9 +16,8 @@ public record Transaction(
     @Id
     Integer id,
     TransactionType transactionType,
-    Float amount,
-    @Email
-    String email,
+    BigDecimal amount,
+    String userId,  // FK to users table
     String category,
     String purpose,
     String transactionSource,
@@ -24,7 +26,7 @@ public record Transaction(
     Integer version
 ) {
     public Transaction {
-        if (amount <= 0) {
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be greater than zero");
         }
     }

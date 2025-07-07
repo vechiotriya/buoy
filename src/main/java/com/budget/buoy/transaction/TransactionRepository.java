@@ -6,7 +6,7 @@ import org.springframework.data.repository.ListCrudRepository;
 
 public interface TransactionRepository extends ListCrudRepository<Transaction, Integer> {
     // This interface extends ListCrudRepository, which provides CRUD operations for the Transaction entity.    
-    List<Transaction> findByEmail(String email);
+    List<Transaction> findByUserId(String userId);
     long count();
     Optional<Transaction> findById(Integer id);
     Transaction save(Transaction transaction);

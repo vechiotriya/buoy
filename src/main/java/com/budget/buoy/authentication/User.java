@@ -1,19 +1,22 @@
 package com.budget.buoy.authentication;
 
+import java.math.BigDecimal;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.Table;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 
 @Table("users")
 public record User(
     @Id
-    Integer id,
+    String id,
     String username,
-    @Email
+    @Email @NotNull
     String email,
     String password,
-    Integer initialBalance,
+    BigDecimal initialBalance,
     @Version
     Integer version    
 ) {

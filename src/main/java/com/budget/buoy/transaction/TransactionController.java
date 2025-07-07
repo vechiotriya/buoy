@@ -4,6 +4,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.budget.buoy.authentication.User;
 import com.budget.buoy.authentication.UserRepository;
 import jakarta.validation.Valid;
+
+import java.math.BigDecimal;
 import java.util.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
@@ -22,12 +24,12 @@ public class TransactionController {
         this.userRepository = userRepository;
     }
 
-    // get current logged in user's email
-    private String getCurrentUserEmail() {
+    // get current logged in user's id
+    private String getCurrentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"))
-                .email();
+                .id();
     }
 
     // parse date parts
@@ -48,9 +50,9 @@ public class TransactionController {
 
     @GetMapping("/transactions")
     public List<Transaction> getAllTransactions() {
-        String email = getCurrentUserEmail();
-        logger.info("Current user: {}", email);
-        return transactionRepository.findByEmail(email);
+        String user = getCurrentUser();
+        logger.info("Current user: {}", user);
+        return transactionRepository.findByUserId(user);
     }
 
     @GetMapping("/transactions/{id}")
@@ -61,9 +63,9 @@ public class TransactionController {
     //get transactions by month of an year
     @GetMapping("/transactions/month/{date}")
     public List<Transaction> getTransactionByMonth(@PathVariable String date) {
-        String email = getCurrentUserEmail();
+        String user = getCurrentUser();
         int[] dateParts = parseDateParts(date);
-        List<Transaction> transactions = transactionRepository.findByEmail(email);
+        List<Transaction> transactions = transactionRepository.findByUserId(user);
         List<Transaction> filtered = filterByMonthAndYear(transactions, dateParts[0], dateParts[1]);
 
         if (filtered.isEmpty()) throw new TransactionNotFound();
@@ -73,9 +75,9 @@ public class TransactionController {
     // get total expense and income by month of an year
     @GetMapping("/transactions/month/{date}/total")
     public Map<String, Double> getTotalByMonth(@PathVariable String date) {
-        String email = getCurrentUserEmail();
+        String user = getCurrentUser();
         int[] dateParts = parseDateParts(date);
-        List<Transaction> transactions = transactionRepository.findByEmail(email);
+        List<Transaction> transactions = transactionRepository.findByUserId(user);
         int month = dateParts[0], year = dateParts[1];
 
         if (transactions.isEmpty()) throw new TransactionNotFound();
@@ -83,13 +85,13 @@ public class TransactionController {
         double totalExpense = transactions.stream()
                 .filter(t -> t.transactionType() == TransactionType.Expense)
                 .filter(t -> t.transactionDate().getMonthValue() == month && t.transactionDate().getYear() == year)
-                .mapToDouble(Transaction::amount)
+                .mapToDouble(t -> t.amount().doubleValue())
                 .sum();
 
         double totalIncome = transactions.stream()
                 .filter(t -> t.transactionType() == TransactionType.Income)
                 .filter(t -> t.transactionDate().getMonthValue() == month && t.transactionDate().getYear() == year)
-                .mapToDouble(Transaction::amount)
+                .mapToDouble(t -> t.amount().doubleValue())
                 .sum();
 
         Map<String, Double> totals = new HashMap<>();
@@ -102,12 +104,12 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/transactions/add")
     public void addTransaction(@Valid @RequestBody Transaction transaction) {
-        String email = getCurrentUserEmail();
+        String user = getCurrentUser();
         Transaction transactionWithEmail = new Transaction(
                 transaction.id(),
                 transaction.transactionType(),
-                transaction.amount(),
-                email,
+                new BigDecimal(transaction.amount().toBigInteger()),
+                user,
                 transaction.category(),
                 transaction.purpose(),
                 transaction.transactionSource(),

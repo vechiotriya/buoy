@@ -1,5 +1,8 @@
 package com.budget.buoy.authentication;
 
+import java.math.BigDecimal;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -53,7 +56,8 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Email already exists");
         }
       // Encode the password before saving
-        user = new User(user.id(),user.username(), user.email(), passwordEncoder.encode(user.password()),0,user.version());
+        user = new User(UUID.randomUUID().toString(),user.username(), user.email(), passwordEncoder.encode(user.password()),new BigDecimal("0.00")
+,user.version());
         userRepository.save(user);
         return ResponseEntity.ok("User registered successfully");
     }

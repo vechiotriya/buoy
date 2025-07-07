@@ -1,0 +1,59 @@
+package com.budget.buoy.category;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.budget.buoy.authentication.UserRepository;
+
+import jakarta.validation.Valid;
+
+@RestController
+public class CategoryController {
+
+    private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
+
+    // get current logged in user's id
+    private String getCurrentUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"))
+                .id();
+    }
+
+    public CategoryController(CategoryRepository categoryRepository, UserRepository userRepository) {
+        this.categoryRepository = categoryRepository;
+        this.userRepository = userRepository;
+    }
+
+    // Get all categories for the current user
+    @GetMapping("/categories")
+    public List<Category> getAllCategories() {
+        String userId = getCurrentUser();
+        return categoryRepository.findByUserId(userId);
+    }
+
+    // Add a new category for the current user
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping("/categories/add")
+    public Category addCategory(@Valid @RequestBody Category category) {
+        String userId = getCurrentUser();
+        Category newCategory = new Category(
+                category.id(),
+                userId,
+                category.name(),
+                new BigDecimal(category.budget().doubleValue()).setScale(2, RoundingMode.HALF_UP),
+                category.version());
+        return categoryRepository.save(newCategory);
+    }
+}
