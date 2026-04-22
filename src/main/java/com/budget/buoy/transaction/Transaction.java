@@ -19,10 +19,10 @@ public record Transaction(
     TransactionType transactionType,
     @Column
     BigDecimal amount,
-    String userId,  // FK to users table
+    String user_id,  // FK to users table
     String category,
     String purpose,
-    LocalDate transactionDate,
+    LocalDate transaction_date,
     @Version
     Integer version
 ) {

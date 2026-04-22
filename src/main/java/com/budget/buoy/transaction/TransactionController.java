@@ -7,8 +7,8 @@ import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,20 +42,16 @@ public class TransactionController {
                 .id();
     }
 
-    // parse date parts
-    private int[] parseDateParts(String date) {
+    // Get the first date and last date of a month by a given date
+    private LocalDate[] getMonthEndAndStart(String date) {
         String[] parts = date.split("-");
         if (parts.length != 3) {
             throw new IllegalArgumentException("Date must be in format dd-MM-yyyy");
         }
-        return new int[] { Integer.parseInt(parts[1]), Integer.parseInt(parts[0]) }; // month, year
-    }
-
-    // filter by month & year
-    private List<Transaction> filterByMonthAndYear(List<Transaction> transactions, int month, int year) {
-        return transactions.stream()
-                .filter(t -> t.transactionDate().getMonthValue() == month && t.transactionDate().getYear() == year)
-                .toList();
+        YearMonth yearMonth = YearMonth.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+        LocalDate start = yearMonth.atDay(1); 
+        LocalDate end = yearMonth.atEndOfMonth();
+        return new LocalDate[] { start, end };
     }
 
     @GetMapping("/transactions")
@@ -73,40 +69,42 @@ public class TransactionController {
     @GetMapping("/transactions/month/{date}")
     public List<Transaction> getTransactionByMonth(@PathVariable String date) {
         String user = getCurrentUser();
-        int[] dateParts = parseDateParts(date);
-        List<Transaction> transactions = transactionRepository.findByUserId(user);
-        List<Transaction> filtered = filterByMonthAndYear(transactions, dateParts[0], dateParts[1]);
-
-        if (filtered.isEmpty())
+        LocalDate[] range = getMonthEndAndStart(date);
+LocalDate start = range[0];
+LocalDate end = range[1];
+        List<Transaction> transactions = transactionRepository.findByUserIdAndDateBetween(user,
+                start, end);
+        if (transactions.isEmpty())
             throw new TransactionNotFound();
-        return filtered;
+        return transactions;
     }
 
-    // get total expense and income by month of an year
+    // get a month's total stats(balance, total expense, total income)
     @GetMapping("/transactions/month/{date}/total")
     public Map<String, BigDecimal> getTotalByMonth(@PathVariable String date) {
         String user = getCurrentUser();
-        int[] dateParts = parseDateParts(date);
-        List<Transaction> transactions = transactionRepository.findByUserId(user);
-        int month = dateParts[0], year = dateParts[1];
+        LocalDate[] range = getMonthEndAndStart(date);
+LocalDate start = range[0];
+LocalDate end = range[1];
+        List<Transaction> transactions = transactionRepository.findByUserIdAndDateBetween(user,
+                start, end);
         if (transactions.isEmpty())
             throw new TransactionNotFound();
 
         BigDecimal totalExpense = transactions.stream()
                 .filter(t -> t.transactionType() == TransactionType.Expense)
-                .filter(t -> t.transactionDate().getMonthValue() == month && t.transactionDate().getYear() == year)
                 .map(t -> t.amount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalIncome = transactions.stream()
                 .filter(t -> t.transactionType() == TransactionType.Income)
-                .filter(t -> t.transactionDate().getMonthValue() == month && t.transactionDate().getYear() == year)
                 .map(t -> t.amount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
- 
+
         Map<String, BigDecimal> totals = new HashMap<>();
         totals.put("totalExpense", totalExpense);
         totals.put("totalIncome", totalIncome);
-        totals.put("balance", userRepository.findByUsername(getCurrentUsername()).map(User::balance).orElse(BigDecimal.ZERO));
+        totals.put("balance",
+                userRepository.findByUsername(getCurrentUsername()).map(User::balance).orElse(BigDecimal.ZERO));
         return totals;
     }
 
@@ -114,20 +112,19 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/transactions/add")
     public void addTransaction(@Valid @RequestBody Transaction transaction) {
-        String userId = getCurrentUser();
         User user = userRepository.findByUsername(getCurrentUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         Transaction transactionWithEmail = new Transaction(
                 NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
                 transaction.transactionType(),
-                new BigDecimal(transaction.amount().toBigInteger()),
-                userId,
+                transaction.amount(),
+                user.id(),
                 transaction.category(),
                 transaction.purpose(),
-                transaction.transactionDate(),
+                transaction.transaction_date(),
                 transaction.version());
         transactionRepository.save(transactionWithEmail);
-        BigDecimal balance = userRepository.findByUsername(getCurrentUsername()).map(User::balance).orElse(BigDecimal.ZERO);
+        BigDecimal balance = user.balance();
         BigDecimal newBalance = transaction.transactionType() == TransactionType.Expense
                 ? balance.subtract(transactionWithEmail.amount())
                 : balance.add(transactionWithEmail.amount());
@@ -143,14 +140,14 @@ public class TransactionController {
                 .filter(t -> t.transactionType() == TransactionType.Expense);
         LocalDate today = LocalDate.now();
 
-        WeekFields weekFields = WeekFields.of(Locale.getDefault());
+        WeekFields weekFields = WeekFields.ISO;
         int currentWeek = today.get(weekFields.weekOfWeekBasedYear());
         int currentYear = today.getYear();
 
         // Group by date, summing amounts
         Map<LocalDate, BigDecimal> dailySums = expensesByUser
                 .collect(Collectors.groupingBy(
-                        Transaction::transactionDate,
+                        Transaction::transaction_date,
                         Collectors.reducing(BigDecimal.ZERO, Transaction::amount, BigDecimal::add)));
 
         String[] labels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
