@@ -48,7 +48,7 @@ public class TransactionController {
         if (parts.length != 3) {
             throw new IllegalArgumentException("Date must be in format dd-MM-yyyy");
         }
-        return new int[] { Integer.parseInt(parts[1]), Integer.parseInt(parts[2]) }; // month, year
+        return new int[] { Integer.parseInt(parts[1]), Integer.parseInt(parts[0]) }; // month, year
     }
 
     // filter by month & year
@@ -61,7 +61,6 @@ public class TransactionController {
     @GetMapping("/transactions")
     public List<Transaction> getAllTransactions() {
         String user = getCurrentUser();
-        logger.info("Current user: {}", user);
         return transactionRepository.findByUserId(user);
     }
 
@@ -90,7 +89,6 @@ public class TransactionController {
         int[] dateParts = parseDateParts(date);
         List<Transaction> transactions = transactionRepository.findByUserId(user);
         int month = dateParts[0], year = dateParts[1];
-
         if (transactions.isEmpty())
             throw new TransactionNotFound();
 
@@ -99,13 +97,12 @@ public class TransactionController {
                 .filter(t -> t.transactionDate().getMonthValue() == month && t.transactionDate().getYear() == year)
                 .map(t -> t.amount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
         BigDecimal totalIncome = transactions.stream()
                 .filter(t -> t.transactionType() == TransactionType.Income)
                 .filter(t -> t.transactionDate().getMonthValue() == month && t.transactionDate().getYear() == year)
                 .map(t -> t.amount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+ 
         Map<String, BigDecimal> totals = new HashMap<>();
         totals.put("totalExpense", totalExpense);
         totals.put("totalIncome", totalIncome);
@@ -127,7 +124,6 @@ public class TransactionController {
                 userId,
                 transaction.category(),
                 transaction.purpose(),
-                transaction.transactionSource(),
                 transaction.transactionDate(),
                 transaction.version());
         transactionRepository.save(transactionWithEmail);

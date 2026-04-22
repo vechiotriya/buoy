@@ -22,7 +22,6 @@ public record Transaction(
     String userId,  // FK to users table
     String category,
     String purpose,
-    String transactionSource,
     LocalDate transactionDate,
     @Version
     Integer version

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS Users (
   username VARCHAR(50) NOT NULL UNIQUE,
   email VARCHAR(100) NOT NULL UNIQUE,
   password VARCHAR(100) NOT NULL,
+  balance DECIMAL(10, 2) NOT NULL,
   version INT
 );
 
@@ -16,7 +17,6 @@ CREATE TABLE IF NOT EXISTS Transaction (
     user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category VARCHAR(255),
     purpose VARCHAR(255),
-    transaction_source VARCHAR(255),
     transaction_date TIMESTAMP NOT NULL,
     version INT,
     PRIMARY KEY (id)
