@@ -5,6 +5,7 @@ import java.time.LocalDate;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
+import org.springframework.data.relational.core.mapping.Column;
 
 import jakarta.annotation.Generated;
 import jakarta.validation.constraints.Email;
@@ -16,6 +17,7 @@ public record Transaction(
     @Id
     String id,
     TransactionType transactionType,
+    @Column
     BigDecimal amount,
     String userId,  // FK to users table
     String category,
