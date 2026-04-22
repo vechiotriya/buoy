@@ -2,8 +2,11 @@ package com.budget.buoy.authentication;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,15 +36,15 @@ public class AuthController {
 
     // Endpoint for user login
     @PostMapping("/auth/login")
-    public ResponseEntity<String> login(@RequestBody AuthRequest authRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequest authRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
             );
             String token = tokenService.generateToken(authentication);
-            return ResponseEntity.ok(token);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of("accessToken", token));
         } catch (AuthenticationException e) {
-            return ResponseEntity.status(401).body("Invalid credentials");
+            return ResponseEntity.status(401).contentType(MediaType.APPLICATION_JSON).body(Map.of("error", "Invalid credentials"));
         }
     }
 
@@ -49,24 +52,17 @@ public class AuthController {
         @PostMapping("/auth/signup")
     public ResponseEntity<?> signup(@Valid @RequestBody User user) {
         if (userRepository.existsByUsername(user.username())) {
-            return ResponseEntity.badRequest().body("Username already exists");
+            return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON).body(Map.of("error", "Username already exists"));
         }
 
         if (userRepository.existsByEmail(user.email())) {
-            return ResponseEntity.badRequest().body("Email already exists");
+            return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON).body(Map.of("error", "Email already exists"));
         }
       // Encode the password before saving
-        user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),user.username(), user.email(), passwordEncoder.encode(user.password()),new BigDecimal("0.00")
+        user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),user.fullName(),user.username(), user.email(), passwordEncoder.encode(user.password()),new BigDecimal("0.00")
 ,user.version());
         userRepository.save(user);
-        return ResponseEntity.ok("User registered successfully");
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of("message", "User registered successfully"));
     }
 
-    // // Endpoint for user logout
-    // @PostMapping("/auth/logout")
-    // public ResponseEntity<String> logout() {
-    //     tokenService.in
-    //     log.info("User logged out");
-    //     return ResponseEntity.ok("User logged out successfully");
-    // }
 }

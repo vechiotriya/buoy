@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,7 +53,7 @@ public class CategoryController {
     public ResponseEntity<?> addCategory(@Valid @RequestBody Category category) {
         String userId = getCurrentUser();
         if(categoryRepository.existsByNameAndUserId(category.name(), userId)) {
-            return ResponseEntity.badRequest().body("Category with this name already exists for the user");
+            return ResponseEntity.badRequest().body(Map.of("error", "Category with this name already exists for the user"));
         }
         Category newCategory = new Category(
                 NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
@@ -60,6 +61,6 @@ public class CategoryController {
                 category.name(),
                 new BigDecimal(category.budget().doubleValue()).setScale(2, RoundingMode.HALF_UP),
                 category.version());
-        return ResponseEntity.ok("Category added for: "+newCategory.userId());
+        return ResponseEntity.ok().body(Map.of("message", "Category added for: " + newCategory.userId()));
     }
 }
