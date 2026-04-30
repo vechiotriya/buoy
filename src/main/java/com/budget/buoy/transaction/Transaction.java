@@ -2,16 +2,9 @@ package com.budget.buoy.transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.Column;
-
-import jakarta.annotation.Generated;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotNull;
-
-
 
 public record Transaction(
     @Id
@@ -20,7 +13,7 @@ public record Transaction(
     @Column
     BigDecimal amount,
     String user_id,  // FK to users table
-    String category,
+    TransactionCategoryType category,
     String purpose,
     LocalDate transaction_date,
     @Version

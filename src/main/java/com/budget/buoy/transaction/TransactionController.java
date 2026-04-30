@@ -3,11 +3,12 @@ package com.budget.buoy.transaction;
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.budget.buoy.authentication.User;
 import com.budget.buoy.authentication.UserRepository;
-import jakarta.validation.Valid;
 
+import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.YearMonth;
 import java.time.temporal.WeekFields;
 import java.util.*;
@@ -25,6 +26,9 @@ public class TransactionController {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TransactionController.class);
+
+    record TransactionGroup(String month, String year, BigDecimal total, List<Transaction> transactions) {
+    }
 
     public TransactionController(TransactionRepository transactionRepository, UserRepository userRepository) {
         this.transactionRepository = transactionRepository;
@@ -49,7 +53,7 @@ public class TransactionController {
             throw new IllegalArgumentException("Date must be in format dd-MM-yyyy");
         }
         YearMonth yearMonth = YearMonth.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
-        LocalDate start = yearMonth.atDay(1); 
+        LocalDate start = yearMonth.atDay(1);
         LocalDate end = yearMonth.atEndOfMonth();
         return new LocalDate[] { start, end };
     }
@@ -58,6 +62,92 @@ public class TransactionController {
     public List<Transaction> getAllTransactions() {
         String user = getCurrentUser();
         return transactionRepository.findByUserId(user);
+    }
+
+    @GetMapping("/transactions/grouped")
+    public List<TransactionGroup> getGroupedTransactions(TransactionFilterDTO filter) {
+        String user = getCurrentUser();
+        List<Transaction> transactions = transactionRepository.findByUserId(user);
+        TransactionType type = filter.getType();
+        TransactionCategoryType category = filter.getCategory();
+        TransactionAmountFilterType amount = filter.getAmount();
+        TransactionDateFilterType date = filter.getDate();
+        Stream<Transaction> stream = transactions.stream();
+        if (amount != null) {
+            if (amount.equals(TransactionAmountFilterType.Upto200)) {
+                stream = stream.filter(t -> t.amount().compareTo(BigDecimal.valueOf(200)) <= 0);
+            } else if (amount.equals(TransactionAmountFilterType.From200to500)) {
+                stream = stream.filter(t -> t.amount().compareTo(BigDecimal.valueOf(200)) >= 0
+                        && t.amount().compareTo(BigDecimal.valueOf(500)) <= 0);
+            } else if (amount.equals(TransactionAmountFilterType.From500to2000)) {
+                stream = stream.filter(t -> t.amount().compareTo(BigDecimal.valueOf(500)) >= 0
+                        && t.amount().compareTo(BigDecimal.valueOf(2000)) <= 0);
+            } else if (amount.equals(TransactionAmountFilterType.Above2000)) {
+                stream = stream.filter(t -> t.amount().compareTo(BigDecimal.valueOf(2000)) > 0);
+            }
+        }
+
+        if (date != null) {
+            if (date.equals(TransactionDateFilterType.Today)) {
+                stream = stream.filter(t -> t.transaction_date().isEqual(LocalDate.now()));
+            } else if (date.equals(TransactionDateFilterType.Thisweek)) {
+                LocalDate thisMonday = LocalDate.now().with(java.time.DayOfWeek.MONDAY);
+                stream = stream.filter(t -> !t.transaction_date().isBefore(thisMonday));
+            } else if (date.equals(TransactionDateFilterType.Thismonth)) {
+                LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+                stream = stream.filter(t -> !t.transaction_date().isBefore(startOfMonth));
+            } else if (date.equals(TransactionDateFilterType.Last3months)) {
+                LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+                stream = stream.filter(t -> !t.transaction_date().isBefore(startOfMonth.minusMonths(2)));
+            }
+        }
+
+        return stream.filter(t -> type == null || t.transactionType() == type)
+                .filter(t -> category == null || java.util.Objects.equals(t.category(), category))
+                .collect(Collectors.groupingBy(
+                        t -> t.transaction_date().getMonth().toString() + "-" + t.transaction_date().getYear())) /// month-year
+                .entrySet().stream().map(entry -> {
+                    List<Transaction> group = entry.getValue(); // get the list of transactions of that group
+                    BigDecimal total = group.stream() // sum the amount of the transactions
+                            .map(Transaction::amount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    Transaction first = group.get(0); // get the first transaction just in order to get the month and
+                                                      // year
+                    return new TransactionGroup(
+                            first.transaction_date().getMonth().toString(),
+                            String.valueOf(first.transaction_date().getYear()),
+                            total,
+                            group);
+                }).sorted(Comparator
+                        .comparingInt((TransactionGroup g) -> Integer.parseInt(g.year()))
+                        .thenComparingInt((TransactionGroup g) -> Month.valueOf(g.month()).getValue()))
+                .toList();
+    }
+
+    @GetMapping("/transactions/search/{param}")
+    public List<TransactionGroup> searchTransaction(@PathVariable String param) {
+        String user = getCurrentUser();
+        List<Transaction> transactions = transactionRepository.findByUserId(user);
+        return transactions.stream().filter(t -> t.purpose().contains(param)
+                || t.amount().toString().contains(param))
+                .collect(Collectors.groupingBy(
+                        t -> t.transaction_date().getMonth().toString() + "-" + t.transaction_date().getYear())) /// month-year
+                .entrySet().stream().map(entry -> {
+                    List<Transaction> group = entry.getValue(); // get the list of transactions of that group
+                    BigDecimal total = group.stream() // sum the amount of the transactions
+                            .map(Transaction::amount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    Transaction first = group.get(0); // get the first transaction just in order to get the month and
+                                                      // year
+                    return new TransactionGroup(
+                            first.transaction_date().getMonth().toString(),
+                            String.valueOf(first.transaction_date().getYear()),
+                            total,
+                            group);
+                }).sorted(Comparator
+                        .comparingInt((TransactionGroup g) -> Integer.parseInt(g.year()))
+                        .thenComparingInt((TransactionGroup g) -> Month.valueOf(g.month()).getValue()))
+                .toList();
     }
 
     @GetMapping("/transactions/{id}")
@@ -70,8 +160,8 @@ public class TransactionController {
     public List<Transaction> getTransactionByMonth(@PathVariable String date) {
         String user = getCurrentUser();
         LocalDate[] range = getMonthEndAndStart(date);
-LocalDate start = range[0];
-LocalDate end = range[1];
+        LocalDate start = range[0];
+        LocalDate end = range[1];
         List<Transaction> transactions = transactionRepository.findByUserIdAndDateBetween(user,
                 start, end);
         if (transactions.isEmpty())
@@ -84,8 +174,8 @@ LocalDate end = range[1];
     public Map<String, BigDecimal> getTotalByMonth(@PathVariable String date) {
         String user = getCurrentUser();
         LocalDate[] range = getMonthEndAndStart(date);
-LocalDate start = range[0];
-LocalDate end = range[1];
+        LocalDate start = range[0];
+        LocalDate end = range[1];
         List<Transaction> transactions = transactionRepository.findByUserIdAndDateBetween(user,
                 start, end);
         if (transactions.isEmpty())
