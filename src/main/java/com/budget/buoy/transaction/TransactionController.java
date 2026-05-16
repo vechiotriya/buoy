@@ -6,10 +6,12 @@ import com.budget.buoy.authentication.UserRepository;
 
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.YearMonth;
+import java.time.format.TextStyle;
 import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -17,6 +19,7 @@ import java.util.stream.Stream;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
@@ -61,7 +64,10 @@ public class TransactionController {
     @GetMapping("/transactions")
     public List<Transaction> getAllTransactions() {
         String user = getCurrentUser();
-        return transactionRepository.findByUserId(user);
+        return transactionRepository.findByUserId(user)
+        .stream()
+        .sorted(Comparator.comparing(Transaction::transaction_date).reversed())
+        .toList();
     }
 
     @GetMapping("/transactions/grouped")
@@ -120,7 +126,7 @@ public class TransactionController {
                             group);
                 }).sorted(Comparator
                         .comparingInt((TransactionGroup g) -> Integer.parseInt(g.year()))
-                        .thenComparingInt((TransactionGroup g) -> Month.valueOf(g.month()).getValue()))
+                        .thenComparingInt((TransactionGroup g) -> Month.valueOf(g.month()).getValue()).reversed())
                 .toList();
     }
 
@@ -146,7 +152,7 @@ public class TransactionController {
                             group);
                 }).sorted(Comparator
                         .comparingInt((TransactionGroup g) -> Integer.parseInt(g.year()))
-                        .thenComparingInt((TransactionGroup g) -> Month.valueOf(g.month()).getValue()))
+                        .thenComparingInt((TransactionGroup g) -> Month.valueOf(g.month()).getValue()).reversed())
                 .toList();
     }
 
@@ -224,18 +230,24 @@ public class TransactionController {
     }
 
     @GetMapping("/transactions/stats/week")
-    public List<GraphData> getWeekStats() {
+    public ResponseEntity<StatsData> getWeekStats() {
         String user = getCurrentUser();
-        Stream<Transaction> expensesByUser = transactionRepository.findByUserId(user).stream()
-                .filter(t -> t.transactionType() == TransactionType.Expense);
         LocalDate today = LocalDate.now();
-
         WeekFields weekFields = WeekFields.ISO;
         int currentWeek = today.get(weekFields.weekOfWeekBasedYear());
         int currentYear = today.getYear();
 
-        // Group by date, summing amounts
-        Map<LocalDate, BigDecimal> dailySums = expensesByUser
+        List<Transaction> expenses = transactionRepository.findByUserId(user).stream()
+                .filter(t -> t.transactionType() == TransactionType.Expense)
+                .collect(Collectors.toList());
+
+        // --- Graph Data (filtered to current week) ---
+        Map<LocalDate, BigDecimal> dailySums = expenses.stream()
+                .filter(t -> {
+                    int week = t.transaction_date().get(weekFields.weekOfWeekBasedYear());
+                    int year = t.transaction_date().getYear();
+                    return week == currentWeek && year == currentYear;
+                })
                 .collect(Collectors.groupingBy(
                         Transaction::transaction_date,
                         Collectors.reducing(BigDecimal.ZERO, Transaction::amount, BigDecimal::add)));
@@ -244,22 +256,107 @@ public class TransactionController {
         List<GraphData> barData = new ArrayList<>();
 
         for (int i = 0; i < 7; i++) {
-            LocalDate day = today.with(weekFields.dayOfWeek(), i + 1); // 1 = Monday
-            int week = day.get(weekFields.weekOfWeekBasedYear());
-            int year = day.getYear();
+            LocalDate day = today.with(weekFields.dayOfWeek(), i + 1);
+            BigDecimal value = dailySums.getOrDefault(day, BigDecimal.ZERO);
 
-            BigDecimal value = BigDecimal.ZERO;
-            if (week == currentWeek && year == currentYear) {
-                value = dailySums.getOrDefault(day, BigDecimal.ZERO);
-            }
-
-            if (day.equals(today)) {
-                barData.add(new GraphData(value, labels[i], "#ffff")); // white or any color you want
-            } else {
-                barData.add(new GraphData(value, labels[i]));
-            }
+            barData.add(day.equals(today)
+                    ? new GraphData(value, labels[i], "#ffff")
+                    : new GraphData(value, labels[i]));
         }
-        return barData;
+
+        // --- Stats ---
+        BigDecimal total = dailySums.values().stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Top spending day (from current week only)
+        Map.Entry<LocalDate, BigDecimal> topDay = dailySums.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElse(null);
+
+        String topSpending = topDay != null
+                ? topDay.getKey().getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+                : "N/A";
+        BigDecimal topSpendingAmount = topDay != null ? topDay.getValue() : BigDecimal.ZERO;
+
+        // Change since last week (%)
+        int lastWeek = currentWeek - 1;
+        int lastWeekYear = currentWeek == 1 ? currentYear - 1 : currentYear;
+        BigDecimal lastWeekTotal = expenses.stream()
+                .filter(t -> {
+                    int week = t.transaction_date().get(weekFields.weekOfWeekBasedYear());
+                    int year = t.transaction_date().getYear();
+                    return week == lastWeek && year == lastWeekYear;
+                })
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Integer changeSinceLast = lastWeekTotal.compareTo(BigDecimal.ZERO) == 0 ? 0
+                : total.subtract(lastWeekTotal)
+                        .divide(lastWeekTotal, 2, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .intValue();
+
+        return ResponseEntity.ok(new StatsData(total, changeSinceLast, topSpending, topSpendingAmount, barData));
+    }
+
+    @GetMapping("/transactions/stats/year")
+    public ResponseEntity<StatsData> getYearStats() {
+        String user = getCurrentUser();
+        LocalDate today = LocalDate.now();
+        int currentYear = today.getYear();
+
+        List<Transaction> expenses = transactionRepository.findByUserId(user).stream()
+                .filter(t -> t.transactionType() == TransactionType.Expense)
+                .collect(Collectors.toList());
+
+        // --- Graph Data (filtered to current year) ---
+        Map<Month, BigDecimal> monthlySums = expenses.stream()
+                .filter(t -> t.transaction_date().getYear() == currentYear)
+                .collect(Collectors.groupingBy(
+                        t -> t.transaction_date().getMonth(),
+                        Collectors.reducing(BigDecimal.ZERO, Transaction::amount, BigDecimal::add)));
+
+        String[] labels = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+        List<GraphData> barData = new ArrayList<>();
+
+        for (int i = 0; i < 12; i++) {
+            Month month = Month.of(i + 1);
+            BigDecimal value = monthlySums.getOrDefault(month, BigDecimal.ZERO);
+
+            barData.add(month.equals(today.getMonth())
+                    ? new GraphData(value, labels[i], "#ffff")
+                    : new GraphData(value, labels[i]));
+        }
+
+        // --- Stats ---
+        BigDecimal total = monthlySums.values().stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Top spending month (from current year only)
+        Map.Entry<Month, BigDecimal> topMonth = monthlySums.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElse(null);
+
+        String topSpending = topMonth != null
+                ? topMonth.getKey().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+                : "N/A";
+        BigDecimal topSpendingAmount = topMonth != null ? topMonth.getValue() : BigDecimal.ZERO;
+
+        // Change since last year (%)
+        BigDecimal lastYearTotal = expenses.stream()
+                .filter(t -> t.transaction_date().getYear() == currentYear - 1)
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Integer changeSinceLast = lastYearTotal.compareTo(BigDecimal.ZERO) == 0 ? 0
+        : total.subtract(lastYearTotal)
+                .divide(lastYearTotal, 2, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .max(BigDecimal.valueOf(-999))  // floor
+                .min(BigDecimal.valueOf(999))   // cap
+                .intValue();
+
+        return ResponseEntity.ok(new StatsData(total, changeSinceLast, topSpending, topSpendingAmount, barData));
     }
 
 }
