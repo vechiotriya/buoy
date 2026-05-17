@@ -13,12 +13,6 @@ public record Category(
         @Id String id,
         String userId, // FK to users table
         @NotNull String name,
-        @NotNull BigDecimal budget,
+        BigDecimal budget,
         @Version Integer version) {
-    public Category {
-        if (budget.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Budget must be greater than zero");
-        }
-        
-    }
 }
