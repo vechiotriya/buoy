@@ -28,7 +28,6 @@ public class TransactionController {
 
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TransactionController.class);
 
     record TransactionGroup(String month, String year, BigDecimal total, List<Transaction> transactions) {
     }
@@ -157,7 +156,7 @@ public class TransactionController {
     }
 
     @GetMapping("/transactions/{id}")
-    public Transaction getTransactionById(@PathVariable Integer id) {
+    public Transaction getTransactionById(@PathVariable String id) {
         return transactionRepository.findById(id).orElseThrow(TransactionNotFound::new);
     }
 
@@ -297,6 +296,43 @@ public class TransactionController {
                         .intValue();
 
         return ResponseEntity.ok(new StatsData(total, changeSinceLast, topSpending, topSpendingAmount, barData));
+    }
+    @GetMapping("/transactions/stats/lastWeek")
+    public ResponseEntity<?> getLastWeekStats() {
+        String user = getCurrentUser();
+        LocalDate today = LocalDate.now();
+        WeekFields weekFields = WeekFields.ISO;
+        int lastWeek = today.get(weekFields.weekOfWeekBasedYear())-1;
+        int currentYear = today.getYear();
+
+        List<Transaction> expenses = transactionRepository.findByUserId(user).stream()
+                .filter(t -> t.transactionType() == TransactionType.Expense)
+                .collect(Collectors.toList());
+
+        // --- Graph Data (filtered to last week) ---
+        Map<LocalDate, BigDecimal> dailySums = expenses.stream()
+                .filter(t -> {
+                    int week = t.transaction_date().get(weekFields.weekOfWeekBasedYear());
+                    int year = t.transaction_date().getYear();
+                    return week == lastWeek && year == currentYear;
+                })
+                .collect(Collectors.groupingBy(
+                        Transaction::transaction_date,
+                        Collectors.reducing(BigDecimal.ZERO, Transaction::amount, BigDecimal::add)));
+
+        String[] labels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        List<GraphData> barData = new ArrayList<>();
+
+        for (int i = 0; i < 7; i++) {
+            LocalDate day = today.with(weekFields.dayOfWeek(), i + 1);
+            BigDecimal value = dailySums.getOrDefault(day, BigDecimal.ZERO);
+
+            barData.add(day.equals(today)
+                    ? new GraphData(value, labels[i], "#ffff")
+                    : new GraphData(value, labels[i]));
+        }
+
+        return ResponseEntity.ok(barData);
     }
 
     @GetMapping("/transactions/stats/year")
