@@ -7,7 +7,7 @@ import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.ListCrudRepository;
 import org.springframework.data.repository.query.Param;
 
-public interface TransactionRepository extends ListCrudRepository<Transaction, Integer> {
+public interface TransactionRepository extends ListCrudRepository<Transaction, String> {
     // This interface extends ListCrudRepository, which provides CRUD operations for
     // the Transaction entity.
     @Query("SELECT * FROM transaction WHERE user_id = :userId")

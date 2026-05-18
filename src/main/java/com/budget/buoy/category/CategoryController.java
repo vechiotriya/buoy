@@ -74,7 +74,6 @@ public class CategoryController {
                 NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
                 userId,
                 category.name(),
-                new BigDecimal(category.budget().doubleValue()).setScale(2, RoundingMode.HALF_UP),
                 category.version());
         categoryRepository.save(newCategory);
         return ResponseEntity.ok().body(Map.of("message", "Category added for: " + newCategory.userId()));

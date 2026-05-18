@@ -13,6 +13,5 @@ public record Category(
         @Id String id,
         String userId, // FK to users table
         @NotNull String name,
-        BigDecimal budget,
         @Version Integer version) {
 }
