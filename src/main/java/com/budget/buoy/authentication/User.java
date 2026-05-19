@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.Table;
-
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -19,7 +19,9 @@ public record User(
 
         @Email(message = "Email must be valid") @NotBlank(message = "Email is required") String email,
 
-        @NotBlank(message = "Password is required") @Size(min = 8, message = "Password must be at least 8 characters") String password,
+        @Nullable @Size(min = 8, message = "Password must be at least 8 characters") String password,
+
+        AuthProvider provider, 
 
         BigDecimal balance,
 

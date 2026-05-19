@@ -6,8 +6,9 @@ import org.springframework.data.repository.ListCrudRepository;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public interface UserRepository extends ListCrudRepository<User, Number> {
+public interface UserRepository extends ListCrudRepository<User, String> {
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
     Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
 }
