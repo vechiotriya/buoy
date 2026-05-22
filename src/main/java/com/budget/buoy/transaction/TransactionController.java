@@ -239,7 +239,7 @@ public class TransactionController {
                 BigDecimal newBalance = transaction.transactionType() == TransactionType.Expense
                                 ? balance.subtract(transactionWithEmail.amount())
                                 : balance.add(transactionWithEmail.amount());
-                User updatedUser = new User(user.id(), user.fullName(), user.username(), user.email(), user.password(),
+                User updatedUser = new User(user.id(), user.fullName(), user.username(),user.profile(), user.email(), user.password(),
                                 user.provider(),
                                 newBalance, user.version());
                 userRepository.save(updatedUser);

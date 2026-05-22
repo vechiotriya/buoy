@@ -2,7 +2,6 @@ package com.budget.buoy.service;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
-import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -18,23 +17,16 @@ import com.budget.buoy.authentication.UserRepository;
 import com.budget.buoy.exception.InvalidGoogleTokenException;
 import com.budget.buoy.exception.ProviderMismatchException;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.Value;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
-    @Value("${google.client-id.web}")
-    private String googleClientId;
-    @Value("${google.client-id.android}")
-    private String androidClientId;
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
+
 
     public User findOrCreateGoogleUser(String idToken) {
         GoogleIdToken.Payload payload = verifyGoogleToken(idToken);
@@ -93,7 +85,7 @@ public class UserService {
         String baseUsername = email.split("@")[0];
         String username = resolveUniqueUsername(baseUsername);
 
-        User user = new User(id, fullName, username, email,
+        User user = new User(id, fullName, username,null, email,
                 null, AuthProvider.GOOGLE, BigDecimal.ZERO, null);
         return userRepository.save(user);
     }

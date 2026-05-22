@@ -12,19 +12,21 @@ import jakarta.validation.constraints.Size;
 
 @Table("users")
 public record User(
-        @Id String id,
-        @NotBlank(message = "Full name is required") String fullName,
+                @Id String id,
+                @NotBlank(message = "Full name is required") String fullName,
 
-        @NotBlank(message = "Username is required") @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters") String username,
+                @NotBlank(message = "Username is required") @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters") String username,
 
-        @Email(message = "Email must be valid") @NotBlank(message = "Email is required") String email,
+                String profile,
+                
+                @Email(message = "Email must be valid") @NotBlank(message = "Email is required") String email,
 
-        @Nullable @Size(min = 8, message = "Password must be at least 8 characters") String password,
+                @Nullable @Size(min = 8, message = "Password must be at least 8 characters") String password,
 
-        AuthProvider provider, 
+                AuthProvider provider,
 
-        BigDecimal balance,
+                BigDecimal balance,
 
-        @Version Integer version) {
+                @Version Integer version) {
 
 }
