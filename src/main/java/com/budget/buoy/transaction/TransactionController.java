@@ -21,24 +21,30 @@ import java.util.stream.Stream;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 public class TransactionController {
 
         private final UserRepository userRepository;
         private final TransactionRepository transactionRepository;
+        private final ApplicationEventPublisher eventPublisher;
         private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
         record TransactionGroup(String month, String year, BigDecimal total, List<Transaction> transactions) {
         }
 
-        public TransactionController(TransactionRepository transactionRepository, UserRepository userRepository) {
+        public TransactionController(TransactionRepository transactionRepository, UserRepository userRepository,
+                        ApplicationEventPublisher eventPublisher) {
                 this.transactionRepository = transactionRepository;
                 this.userRepository = userRepository;
+                this.eventPublisher = eventPublisher;
+
         }
 
         private String getCurrentUsername() {
@@ -198,8 +204,6 @@ public class TransactionController {
                 LocalDate end = range[1];
                 List<Transaction> transactions = transactionRepository.findByUserIdAndDateBetween(user,
                                 start, end);
-                if (transactions.isEmpty())
-                        throw new TransactionNotFound();
 
                 BigDecimal totalExpense = transactions.stream()
                                 .filter(t -> t.transactionType() == TransactionType.Expense)
@@ -221,6 +225,7 @@ public class TransactionController {
 
         // add a new transaction
         @ResponseStatus(HttpStatus.CREATED)
+        @Transactional
         @PostMapping("/transactions/add")
         public void addTransaction(@Valid @RequestBody Transaction transaction) {
                 User user = userRepository.findByUsername(getCurrentUsername())
@@ -234,15 +239,10 @@ public class TransactionController {
                                 transaction.purpose(),
                                 transaction.transaction_date(),
                                 transaction.version());
-                transactionRepository.save(transactionWithEmail);
-                BigDecimal balance = user.balance();
-                BigDecimal newBalance = transaction.transactionType() == TransactionType.Expense
-                                ? balance.subtract(transactionWithEmail.amount())
-                                : balance.add(transactionWithEmail.amount());
-                User updatedUser = new User(user.id(), user.fullName(), user.username(),user.profile(), user.email(), user.password(),
-                                user.provider(),
-                                newBalance, user.version());
-                userRepository.save(updatedUser);
+                Transaction saved = transactionRepository.save(transactionWithEmail);
+                if (saved.transactionType() == TransactionType.Expense) {
+            eventPublisher.publishEvent(new TransactionCreatedEvent(saved,user));
+        }
         }
 
         @GetMapping("/transactions/stats/week")
@@ -271,7 +271,6 @@ public class TransactionController {
 
                 String[] labels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
                 List<GraphData> barData = new ArrayList<>();
-                logger.info("aha {}", dailySums);
                 for (int i = 0; i < 7; i++) {
                         LocalDate day = today.with(weekFields.dayOfWeek(), i + 1);
                         BigDecimal value = dailySums.getOrDefault(day, BigDecimal.ZERO);
