@@ -28,7 +28,7 @@ public class UserService {
     }
 
 
-    public User findOrCreateGoogleUser(String idToken) {
+    public User findOrCreateGoogleUser(String idToken, BigDecimal balance) {
         GoogleIdToken.Payload payload = verifyGoogleToken(idToken);
 
         String email = payload.getEmail();
@@ -36,7 +36,7 @@ public class UserService {
 
         return userRepository.findByEmail(email)
                 .map(existing -> assertGoogleUser(existing, email))
-                .orElseGet(() -> createGoogleUser(email, fullName));
+                .orElseGet(() -> createGoogleUser(email, fullName,balance));
     }
 
     private GoogleIdToken.Payload verifyGoogleToken(String idToken) {
@@ -79,14 +79,14 @@ public class UserService {
         return existing;
     }
 
-    private User createGoogleUser(String email, String fullName) {
+    private User createGoogleUser(String email, String fullName, BigDecimal balance) {
         String id = NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12);
         // Derive a username from the email prefix, ensure uniqueness
         String baseUsername = email.split("@")[0];
         String username = resolveUniqueUsername(baseUsername);
 
         User user = new User(id, fullName, username,null, email,
-                null, AuthProvider.GOOGLE, BigDecimal.ZERO, null);
+                null, AuthProvider.GOOGLE, balance, null);
         return userRepository.save(user);
     }
 

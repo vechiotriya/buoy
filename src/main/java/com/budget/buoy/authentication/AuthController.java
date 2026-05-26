@@ -66,7 +66,7 @@ public class AuthController {
             return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON).body(Map.of("error", "Email already exists"));
         }
       // Encode the password before saving
-        user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),user.fullName(),user.username(),null, user.email(), passwordEncoder.encode(user.password()),AuthProvider.LOCAL,new BigDecimal("0.00")
+        user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),user.fullName(),user.username(),null, user.email(), passwordEncoder.encode(user.password()),AuthProvider.LOCAL,user.balance()
 ,null);
         userRepository.save(user);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of("message", "User registered successfully"));
@@ -75,8 +75,7 @@ public class AuthController {
     @PostMapping("/auth/google")
 public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleAuthRequest request) {
     try {
-        User user = userService.findOrCreateGoogleUser(request.idToken());
-
+        User user = userService.findOrCreateGoogleUser(request.idToken(), request.balance());
         // Reuse your existing token machinery
         Authentication authentication = new UsernamePasswordAuthenticationToken(
             user.username(), null, List.of()
