@@ -9,5 +9,5 @@ public enum TransactionCategoryType {
     Entertainment,
     Savings,
     Debt,
-    Miscellaneous,
+    Miscellaneous
 }

@@ -240,9 +240,9 @@ public class TransactionController {
                                 transaction.transaction_date(),
                                 transaction.version());
                 Transaction saved = transactionRepository.save(transactionWithEmail);
-                if (saved.transactionType() == TransactionType.Expense) {
-            eventPublisher.publishEvent(new TransactionCreatedEvent(saved,user));
-        }
+        //         if (saved.transactionType() == TransactionType.Expense) {
+        //     eventPublisher.publishEvent(new TransactionCreatedEvent(saved,user));
+        // }
         }
 
         @GetMapping("/transactions/stats/week")

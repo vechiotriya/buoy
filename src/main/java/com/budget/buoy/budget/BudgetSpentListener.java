@@ -34,34 +34,6 @@ public class BudgetSpentListener {
         var transaction = event.transaction();
         User currentUser = userRepository.findById(event.user().id())
             .orElseThrow(() -> new IllegalStateException("User not found"));
-        // Update affected budgets
-        List<Budget> matchingBudgets = budgetRepository
-                .findByUserId(transaction.user_id())
-                .stream()
-                .filter(budget -> budgetCoversCategory(budget, transaction.category().name())|| "All".equals(budget.name()))
-                .toList();
-
-        if (matchingBudgets.isEmpty()) {
-            log.warn("No matching budget found for user={} category={}",
-                    transaction.user_id(), transaction.category());
-            return;
-        }
-
-        matchingBudgets.forEach(budget -> {
-            BigDecimal updatedSpent = budget.spent().add(transaction.amount());
-            Budget updated = new Budget(
-                    budget.id(),
-                    budget.userId(),
-                    budget.amount(),
-                    updatedSpent,
-                    budget.period(),
-                    budget.category(),
-                    budget.name(),
-                    budget.version());
-
-            budgetRepository.save(updated);
-            log.info("Budget '{}' spent updated: {} -> {}", budget.name(), budget.spent(), updatedSpent);
-        });
 
         // Update balance in user table
             BigDecimal balance = currentUser.balance();
@@ -75,8 +47,4 @@ public class BudgetSpentListener {
             userRepository.save(updatedUser);
     }
 
-    private boolean budgetCoversCategory(Budget budget, String categoryName) {
-        return budget.category() != null &&
-                Arrays.asList(budget.category()).contains(categoryName);
-    }
 }

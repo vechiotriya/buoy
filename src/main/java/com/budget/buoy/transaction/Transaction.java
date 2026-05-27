@@ -13,7 +13,7 @@ public record Transaction(
     @Column
     BigDecimal amount,
     String user_id,  // FK to users table
-    TransactionCategoryType category,
+    String category,
     String purpose,
     LocalDate transaction_date,
     @Version
