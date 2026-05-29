@@ -14,17 +14,13 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
 
 @Component
 public class BudgetSpentListener {
     private static final Logger log = LoggerFactory.getLogger(BudgetSpentListener.class);
-    private final BudgetRepository budgetRepository;
     private final UserRepository userRepository;
 
-    public BudgetSpentListener(BudgetRepository budgetRepository, UserRepository userRepository) {
-        this.budgetRepository = budgetRepository;
+    public BudgetSpentListener(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
