@@ -87,7 +87,8 @@ public class TransactionController {
                 TransactionCategoryType category = filter.getCategory();
                 TransactionAmountFilterType amount = filter.getAmount();
                 TransactionDateFilterType date = filter.getDate();
-                Stream<Transaction> stream = transactions.stream().sorted(Comparator.comparing(Transaction::createdAt).reversed());
+                Stream<Transaction> stream = transactions.stream()
+                                .sorted(Comparator.comparing(Transaction::createdAt).reversed());
                 if (amount != null) {
                         if (amount.equals(TransactionAmountFilterType.Upto200)) {
                                 stream = stream.filter(t -> t.amount().compareTo(BigDecimal.valueOf(200)) <= 0);
@@ -148,21 +149,20 @@ public class TransactionController {
         @GetMapping("/transactions/search/{param}")
         public List<TransactionGroup> searchTransaction(@PathVariable String param) {
                 String user = getCurrentUser();
+                String lowerParam = param.toLowerCase();
                 List<Transaction> transactions = transactionRepository.findByUserId(user);
-                return transactions.stream().filter(t -> t.purpose().contains(param)
-                                || t.amount().toString().contains(param))
+                return transactions.stream()
+                                .filter(t -> Objects.toString(t.purpose(), "").toLowerCase().contains(lowerParam)
+                                                || t.amount().toString().contains(lowerParam))
                                 .collect(Collectors.groupingBy(
                                                 t -> t.transaction_date().getMonth().toString() + "-"
-                                                                + t.transaction_date().getYear())) /// month-year
+                                                                + t.transaction_date().getYear()))
                                 .entrySet().stream().map(entry -> {
-                                        List<Transaction> group = entry.getValue(); // get the list of transactions of
-                                                                                    // that group
-                                        BigDecimal total = group.stream() // sum the amount of the transactions
+                                        List<Transaction> group = entry.getValue();
+                                        BigDecimal total = group.stream()
                                                         .map(Transaction::amount)
                                                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-                                        Transaction first = group.get(0); // get the first transaction just in order to
-                                                                          // get the month and
-                                                                          // year
+                                        Transaction first = group.get(0);
                                         return new TransactionGroup(
                                                         first.transaction_date().getMonth().toString(),
                                                         String.valueOf(first.transaction_date().getYear()),
