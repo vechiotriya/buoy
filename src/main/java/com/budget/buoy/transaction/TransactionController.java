@@ -75,7 +75,7 @@ public class TransactionController {
                 String user = getCurrentUser();
                 return transactionRepository.findByUserId(user)
                                 .stream()
-                                .sorted(Comparator.comparing(Transaction::transaction_date).reversed())
+                                .sorted(Comparator.comparing(Transaction::transaction_date))
                                 .toList();
         }
 
@@ -87,7 +87,7 @@ public class TransactionController {
                 TransactionCategoryType category = filter.getCategory();
                 TransactionAmountFilterType amount = filter.getAmount();
                 TransactionDateFilterType date = filter.getDate();
-                Stream<Transaction> stream = transactions.stream();
+                Stream<Transaction> stream = transactions.stream().sorted(Comparator.comparing(Transaction::transaction_date));
                 if (amount != null) {
                         if (amount.equals(TransactionAmountFilterType.Upto200)) {
                                 stream = stream.filter(t -> t.amount().compareTo(BigDecimal.valueOf(200)) <= 0);
@@ -240,9 +240,8 @@ public class TransactionController {
                                 transaction.transaction_date(),
                                 transaction.version());
                 Transaction saved = transactionRepository.save(transactionWithEmail);
-                if (saved.transactionType() == TransactionType.Expense) {
-            eventPublisher.publishEvent(new TransactionCreatedEvent(saved,user));
-        }
+                eventPublisher.publishEvent(new TransactionCreatedEvent(saved, user));
+
         }
 
         @GetMapping("/transactions/stats/week")
@@ -334,7 +333,7 @@ public class TransactionController {
                                 .filter(t -> {
                                         int week = t.transaction_date().get(weekFields.weekOfWeekBasedYear());
                                         int year = t.transaction_date().getYear();
-                                        return week == lastWeek && year == lastWeekYear; 
+                                        return week == lastWeek && year == lastWeekYear;
                                 })
                                 .collect(Collectors.groupingBy(
                                                 Transaction::transaction_date,
