@@ -75,7 +75,7 @@ public class TransactionController {
                 String user = getCurrentUser();
                 return transactionRepository.findByUserId(user)
                                 .stream()
-                                .sorted(Comparator.comparing(Transaction::transaction_date))
+                                .sorted(Comparator.comparing(Transaction::transaction_date).reversed())
                                 .toList();
         }
 
@@ -87,7 +87,7 @@ public class TransactionController {
                 TransactionCategoryType category = filter.getCategory();
                 TransactionAmountFilterType amount = filter.getAmount();
                 TransactionDateFilterType date = filter.getDate();
-                Stream<Transaction> stream = transactions.stream().sorted(Comparator.comparing(Transaction::transaction_date));
+                Stream<Transaction> stream = transactions.stream().sorted(Comparator.comparing(Transaction::transaction_date).reversed());
                 if (amount != null) {
                         if (amount.equals(TransactionAmountFilterType.Upto200)) {
                                 stream = stream.filter(t -> t.amount().compareTo(BigDecimal.valueOf(200)) <= 0);
