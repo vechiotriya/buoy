@@ -1,44 +1,49 @@
 package com.budget.buoy.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.stereotype.Service;
+import java.util.Map;
 
-import com.budget.buoy.authentication.AuthController;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 public class EmailService {
 
-    private final JavaMailSender mailSender;
-    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
+    private final WebClient webClient;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+    @Value("${RESEND_API_KEY}")
+    private String apiKey;
+
+    public EmailService() {
+        this.webClient = WebClient.builder()
+                .baseUrl("https://api.resend.com")
+                .build();
     }
 
     public void sendOtp(String to, String name, String otp) {
-        try {
-            SimpleMailMessage msg = new SimpleMailMessage();
-            msg.setTo(to);
-            msg.setSubject("Buoy – Your password reset code");
-            msg.setText("""
-                    Hi %s,
 
-                    Your one-time password reset code is:
+        String html = """
+            <h2>Password Reset</h2>
+            <p>Hi %s,</p>
+            <p>Your OTP is:</p>
+            <h1>%s</h1>
+            <p>Expires in 10 minutes.</p>
+            """.formatted(name, otp);
 
-                        %s
-
-                    It expires in 10 minutes. If you didn't request this, ignore this email.
-
-                    – The Budget Buoy team
-                    """.formatted(name, otp));
-            mailSender.send(msg);
-            log.info("Email sent to {}",to);
-        } catch (Exception e) {
-            log.error("Failed to send email", e);
-        }
-
+        webClient.post()
+                .uri("/emails")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of(
+                        "from", "onboarding@resend.dev",
+                        "to", new String[]{to},
+                        "subject", "Buoy - Password Reset OTP",
+                        "html", html
+                ))
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
     }
 }
