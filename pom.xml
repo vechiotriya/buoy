@@ -12,7 +12,7 @@
 	<artifactId>buoy</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>buoy</name>
-	<description>Demo project for Spring Boot</description>
+	<description>Backend for buoy mobile app</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -98,6 +98,13 @@
     <groupId>com.cloudinary</groupId>
     <artifactId>cloudinary-taglib</artifactId>
     <version>2.0.0</version>
+</dependency>
+<!-- Source: https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+    <version>4.0.6</version>
+    <scope>compile</scope>
 </dependency>
 	</dependencies>
 

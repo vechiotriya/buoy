@@ -1,6 +1,6 @@
 package com.budget.buoy.authentication;
 
-import java.math.BigDecimal;
+import com.budget.buoy.service.PasswordResetService;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
@@ -27,18 +27,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 public class AuthController {
+    private final PasswordResetService passwordResetService;
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final TokenService tokenService;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    public AuthController(TokenService tokenService,AuthenticationManager authenticationManager,UserRepository userRepository,PasswordEncoder passwordEncoder) {
+
+    public AuthController(TokenService tokenService,AuthenticationManager authenticationManager,UserRepository userRepository,PasswordEncoder passwordEncoder, PasswordResetService passwordResetService) {
         this.tokenService = tokenService;
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userService = new UserService(userRepository);
+        this.passwordResetService = passwordResetService;
     }
 
     // Endpoint for user login
@@ -96,6 +99,27 @@ public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleAuthRequest reque
             .contentType(MediaType.APPLICATION_JSON)
             .body(Map.of("error", e.getMessage()));
     }
+}
+
+@PostMapping("/auth/forgot-password")
+public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+    passwordResetService.initiate(req.email());
+    return ResponseEntity.ok(Map.of("message", "If that email exists, a code was sent."));
+}
+
+@PostMapping("/auth/verify-otp")
+public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequest req) {
+    return passwordResetService.verifyOtp(req.email(), req.otp())
+        .map(token -> ResponseEntity.ok(Map.of("resetToken", token)))
+        .orElseGet(() -> ResponseEntity.status(400)
+            .body(Map.of("error", "Invalid or expired OTP")));
+}
+
+@PostMapping("/auth/reset-password")
+public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+    boolean ok = passwordResetService.resetPassword(req.resetToken(), req.newPassword());
+    if (ok) return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+    return ResponseEntity.status(400).body(Map.of("error", "Invalid or expired reset token"));
 }
 
 }
