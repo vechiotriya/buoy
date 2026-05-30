@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 public class BudgetController {
@@ -31,6 +32,7 @@ public class BudgetController {
     UserRepository userRepository;
     BudgetService budgetService;
     private static final Logger logger = LoggerFactory.getLogger(BudgetController.class);
+
     public BudgetController(BudgetRepository budgetRepository, CategoryRepository categoryRepository,
             UserRepository userRepository, BudgetService budgetService) {
         this.budgetRepository = budgetRepository;
@@ -54,15 +56,14 @@ public class BudgetController {
     @PostMapping("/budget/add")
     public void addBudget(@Valid @RequestBody Budget budget) {
         Budget newBudget = new Budget(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
-                getCurrentUser(), budget.amount(), budget.period(), budget.category(),null, budget.name(),
+                getCurrentUser(), budget.amount(), budget.period(), budget.category(), null, budget.name(),
                 budget.version());
         budgetRepository.save(newBudget);
     }
 
-    @ResponseStatus(HttpStatus.OK)
-    @DeleteMapping("/budget/delete")
-    public void deleteBudget(@RequestBody String id) {
-        logger.info("Deleting budget: {}",id);
+    @DeleteMapping("/budget/delete/{id}")
+    public void deleteBudget(@PathVariable String id) {
+        logger.info("Deleting budget: {}", id);
         budgetRepository.deleteById(id);
     }
 
@@ -70,7 +71,10 @@ public class BudgetController {
     public List<BudgetResponse> getAllBudgets() {
         String userId = getCurrentUser();
         List<Budget> budgets = budgetRepository.findByUserId(userId);
-        return budgets.stream().map(budget -> new BudgetResponse(budget.id(), budget.name(), budget.amount(), budgetService.getCurrentSpent(budget), budget.period(), budget.category(), budget.createdAt())).toList();
+        return budgets.stream()
+                .map(budget -> new BudgetResponse(budget.id(), budget.name(), budget.amount(),
+                        budgetService.getCurrentSpent(budget), budget.period(), budget.category(), budget.createdAt()))
+                .toList();
     }
 
 }
