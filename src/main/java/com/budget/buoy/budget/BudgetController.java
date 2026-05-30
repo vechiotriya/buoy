@@ -62,6 +62,7 @@ public class BudgetController {
     @ResponseStatus(HttpStatus.OK)
     @DeleteMapping("/budget/delete")
     public void deleteBudget(@RequestBody String id) {
+        logger.info("Deleting budget: {}",id);
         budgetRepository.deleteById(id);
     }
 
