@@ -103,6 +103,7 @@ public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleAuthRequest reque
 
 @PostMapping("/auth/forgot-password")
 public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+    log.info("Forgot password initiated {}",req);
     passwordResetService.initiate(req.email());
     return ResponseEntity.ok(Map.of("message", "If that email exists, a code was sent."));
 }
