@@ -3,57 +3,57 @@ package com.budget.buoy.service;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClient;
 
 @Service
 public class EmailService {
 
-    private final WebClient webClient;
+        private final RestClient restClient;
+        private final String senderEmail;
+        private final String senderName;
+        private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
-    @Value("${BREVO_SENDER_EMAIL}")
-    private String senderEmail;
+        public EmailService(
+                        @Value("${BREVO_API_KEY}") String apiKey,
+                        @Value("${BREVO_SENDER_EMAIL}") String senderEmail,
+                        @Value("${BREVO_SENDER_NAME:Buoy}") String senderName) {
 
-    @Value("${BREVO_SENDER_NAME:Buoy}")
-    private String senderName;
+                this.senderEmail = senderEmail;
+                this.senderName = senderName;
+                this.restClient = RestClient.builder()
+                                .baseUrl("https://api.brevo.com/v3")
+                                .defaultHeader("api-key", apiKey)
+                                .defaultHeader("Content-Type", "application/json")
+                                .build();
+        }
 
-    public EmailService(@Value("${BREVO_API_KEY}") String apiKey) {
-        this.webClient = WebClient.builder()
-                .baseUrl("https://api.brevo.com/v3")
-                .defaultHeader("api-key", apiKey)        // set once here, always sent
-                .defaultHeader("Content-Type", "application/json")
-                .build();
-    }
+        public void sendOtp(String to, String name, String otp) {
+                log.info("Sending email to {} with OTP {}", to, otp);
+                String html = """
+                                <h2>Password Reset</h2>
+                                <p>Hi %s,</p>
+                                <p>Your OTP is: <strong>%s</strong></p>
+                                <p>Expires in 10 minutes.</p>
+                                """.formatted(name, otp);
 
-    public void sendOtp(String to, String name, String otp) {
+                var body = Map.of(
+                                "sender", Map.of("email", senderEmail, "name", senderName),
+                                "to", List.of(Map.of("email", to, "name", name)),
+                                "subject", "Buoy - Password Reset OTP",
+                                "htmlContent", html);
 
-        String html = """
-            <h2>Password Reset</h2>
-            <p>Hi %s,</p>
-            <p>Your OTP is:</p>
-            <h1>%s</h1>
-            <p>Expires in 10 minutes.</p>
-            """.formatted(name, otp);
-
-        webClient.post()
-                .uri("/smtp/email")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of(
-                        "sender", Map.of(
-                                "email", senderEmail,
-                                "name", senderName
-                        ),
-                        "to", List.of(Map.of(
-                                "email", to,
-                                "name", name
-                        )),
-                        "subject", "Buoy - Password Reset OTP",
-                        "htmlContent", html
-                ))
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-    }
+                restClient.post()
+                                .uri("/smtp/email")
+                                .body(body)
+                                .retrieve()
+                                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                                        log.error("Error sending email: {}", res);
+                                })
+                                .toBodilessEntity();
+        }
 }
