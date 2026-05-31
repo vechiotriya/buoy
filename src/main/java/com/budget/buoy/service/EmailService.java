@@ -13,18 +13,17 @@ public class EmailService {
 
     private final WebClient webClient;
 
-    @Value("${BREVO_API_KEY}")
-    private String apiKey;
-
     @Value("${BREVO_SENDER_EMAIL}")
     private String senderEmail;
 
     @Value("${BREVO_SENDER_NAME:Buoy}")
     private String senderName;
 
-    public EmailService() {
+    public EmailService(@Value("${BREVO_API_KEY}") String apiKey) {
         this.webClient = WebClient.builder()
                 .baseUrl("https://api.brevo.com/v3")
+                .defaultHeader("api-key", apiKey)        // set once here, always sent
+                .defaultHeader("Content-Type", "application/json")
                 .build();
     }
 
@@ -40,7 +39,6 @@ public class EmailService {
 
         webClient.post()
                 .uri("/smtp/email")
-                .header("api-key", apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of(
                         "sender", Map.of(
