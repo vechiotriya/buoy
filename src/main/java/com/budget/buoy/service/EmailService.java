@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import com.budget.buoy.exception.EmailDeliveryException;
+
 @Service
 public class EmailService {
 
@@ -32,28 +34,40 @@ public class EmailService {
                                 .build();
         }
 
-        public void sendOtp(String to, String name, String otp) {
-                log.info("Sending email to {} with OTP {}", to, otp);
-                String html = """
-                                <h2>Password Reset</h2>
-                                <p>Hi %s,</p>
-                                <p>Your OTP is: <strong>%s</strong></p>
-                                <p>Expires in 10 minutes.</p>
-                                """.formatted(name, otp);
+public void sendOtp(String to, String name, String otp) {
+    String html = """
+            <h2>Password Reset</h2>
+            <p>Hi %s,</p>
+            <p>Your OTP is: <strong>%s</strong></p>
+            <p>Expires in 10 minutes.</p>
+            """.formatted(name, otp);
 
-                var body = Map.of(
-                                "sender", Map.of("email", senderEmail, "name", senderName),
-                                "to", List.of(Map.of("email", to, "name", name)),
-                                "subject", "Buoy - Password Reset OTP",
-                                "htmlContent", html);
+    var body = Map.of(
+            "sender",      Map.of("email", senderEmail, "name", senderName),
+            "to",          List.of(Map.of("email", to, "name", name)),
+            "subject",     "Buoy - Password Reset OTP",
+            "htmlContent", html
+    );
 
-                restClient.post()
-                                .uri("/smtp/email")
-                                .body(body)
-                                .retrieve()
-                                .onStatus(HttpStatusCode::isError, (req, res) -> {
-                                        log.error("Error sending email: {}", res);
-                                })
-                                .toBodilessEntity();
-        }
+    try {
+        restClient.post()
+                .uri("/smtp/email")
+                .body(body)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                    String responseBody = new String(res.getBody().readAllBytes());
+                    throw new EmailDeliveryException(
+                            "Brevo error " + res.getStatusCode() + ": " + responseBody);
+                })
+                .toBodilessEntity();
+
+    } catch (EmailDeliveryException e) {
+        log.error("Email delivery failed for [{}]: {}", to, e.getMessage());
+        throw e; // re-throw so the caller (e.g. your auth flow) can respond with 502
+    } catch (Exception e) {
+        log.error("Unexpected error sending email to [{}]", to, e); // no {}, logs full trace
+        throw new EmailDeliveryException("Unexpected email error", e);
+    }
+}
+
 }
