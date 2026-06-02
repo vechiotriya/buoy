@@ -131,12 +131,11 @@ public class AuthController {
     @GetMapping("/auth/instagram/callback")
     public void callback(
             @RequestParam("code") String code,
-            @RequestParam("balance") Double balance,
             HttpServletResponse response) throws IOException {
 
         User user = userService.findOrCreateInstagramUser(
-                code,
-                balance);
+                code
+                );
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user.username(),
