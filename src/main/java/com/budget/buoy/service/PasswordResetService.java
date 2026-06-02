@@ -16,6 +16,7 @@ import com.budget.buoy.authentication.PasswordResetOtp;
 import com.budget.buoy.authentication.PasswordResetOtpRepository;
 import com.budget.buoy.authentication.User;
 import com.budget.buoy.authentication.UserRepository;
+import com.budget.buoy.exception.PasswordResetNotSupportedException;
 
 @Service
 public class PasswordResetService {
@@ -47,8 +48,9 @@ public class PasswordResetService {
     public void initiate(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             // Guard: Google/OAuth users have no password to reset
-            if (user.provider() != AuthProvider.LOCAL)
-                return;
+            if (user.provider() == AuthProvider.GOOGLE)
+               throw new PasswordResetNotSupportedException(
+        "Password reset is not available for Google accounts");
 
             otpRepository.invalidateAllForUser(user.id());
 
