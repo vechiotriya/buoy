@@ -52,7 +52,7 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/signup", "/auth/login","/auth/google","/auth/forgot-password","/auth/reset-password","/auth/verify-otp","/webhooks/instagram").permitAll()
+                        .requestMatchers("/auth/signup", "/auth/login","/auth/google","/auth/forgot-password","/auth/reset-password","/auth/verify-otp","/webhooks/instagram","/auth/instagram/callback").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(withDefaults()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

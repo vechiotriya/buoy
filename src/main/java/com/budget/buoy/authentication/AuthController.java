@@ -1,6 +1,12 @@
 package com.budget.buoy.authentication;
 
+import com.budget.buoy.service.InstagramService;
 import com.budget.buoy.service.PasswordResetService;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +32,7 @@ import com.budget.buoy.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,17 +48,20 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final InstagramService instagramService;
     private final PasswordEncoder passwordEncoder;
     @Value("${INSTAGRAM_VERIFY_TOKEN}")
     private String verifyToken;
 
     public AuthController(TokenService tokenService, AuthenticationManager authenticationManager,
-            UserRepository userRepository, PasswordEncoder passwordEncoder, PasswordResetService passwordResetService) {
+            UserRepository userRepository, PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
+            InstagramService instagramService) {
         this.tokenService = tokenService;
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.userService = new UserService(userRepository);
+        this.instagramService = new InstagramService();
+        this.userService = new UserService(userRepository, instagramService);
         this.passwordResetService = passwordResetService;
     }
 
@@ -116,6 +126,28 @@ public class AuthController {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/auth/instagram/callback")
+    public void callback(
+            @RequestParam("code") String code,
+            @RequestParam("balance") Double balance,
+            HttpServletResponse response) throws IOException {
+
+        User user = userService.findOrCreateInstagramUser(
+                code,
+                balance);
+
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                user.username(),
+                null,
+                List.of());
+
+        String jwt = tokenService.generateToken(authentication);
+
+        response.sendRedirect(
+                "buoyapp://instagram-auth?token=" +
+                        URLEncoder.encode(jwt, StandardCharsets.UTF_8));
     }
 
     @PostMapping("/auth/forgot-password")

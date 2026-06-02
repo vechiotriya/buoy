@@ -3,6 +3,7 @@ package com.budget.buoy.service;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.Map;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.budget.buoy.authentication.AuthProvider;
+import com.budget.buoy.authentication.InstagramProfile;
 import com.budget.buoy.authentication.User;
 import com.budget.buoy.authentication.UserRepository;
 import com.budget.buoy.exception.InvalidGoogleTokenException;
@@ -22,9 +24,12 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final InstagramService instagramService;
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
-    public UserService(UserRepository userRepository) {
+
+    public UserService(UserRepository userRepository, InstagramService instagramService) {
         this.userRepository = userRepository;
+        this.instagramService = new InstagramService();
     }
 
 
@@ -38,6 +43,29 @@ public class UserService {
                 .map(existing -> assertGoogleUser(existing, email))
                 .orElseGet(() -> createGoogleUser(email, fullName,balance));
     }
+    
+public User findOrCreateInstagramUser(
+        String code,
+        Double balance) {
+
+    InstagramProfile profile =
+            instagramService.getProfile(code);
+
+    String instagramUsername = profile.username();
+
+    Optional<User> existing =
+            userRepository.findByUsername(instagramUsername);
+
+    if (existing.isPresent()) {
+        return existing.get();
+    }
+
+    User user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12), profile.username(),
+                profile.username(), null, profile.id()+"@instagram.local.com", null, AuthProvider.INSTAGRAM,
+                BigDecimal.valueOf(balance), null);
+
+    return userRepository.save(user);
+}
 
     private GoogleIdToken.Payload verifyGoogleToken(String idToken) {
     try {
