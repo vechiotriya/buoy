@@ -22,6 +22,8 @@ import com.budget.buoy.exception.PasswordResetNotSupportedException;
 import com.budget.buoy.exception.ProviderMismatchException;
 import com.budget.buoy.service.TokenService;
 import com.budget.buoy.service.UserService;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 
 import jakarta.validation.Valid;
@@ -29,7 +31,6 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
@@ -41,6 +42,8 @@ public class AuthController {
     private final UserRepository userRepository;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    @Value("${INSTAGRAM_VERIFY_TOKEN}")
+    private String verifyToken;
 
     public AuthController(TokenService tokenService, AuthenticationManager authenticationManager,
             UserRepository userRepository, PasswordEncoder passwordEncoder, PasswordResetService passwordResetService) {
@@ -144,25 +147,19 @@ public class AuthController {
         return ResponseEntity.status(400).body(Map.of("error", "Invalid or expired reset token"));
     }
 
-@RequestMapping("/webhooks/instagram")
-public class InstagramWebhookController {
-
-    private static final String VERIFY_TOKEN = "YOUR_TOKEN";
-
-    @GetMapping
+    @GetMapping("/webhooks/instagram")
     public ResponseEntity<String> verify(
             @RequestParam("hub.mode") String mode,
             @RequestParam("hub.verify_token") String token,
             @RequestParam("hub.challenge") String challenge) {
 
         if ("subscribe".equals(mode)
-                && VERIFY_TOKEN.equals(token)) {
+                && verifyToken.equals(token)) {
             return ResponseEntity.ok(challenge);
         }
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body("Invalid token");
     }
-}
 
 }
