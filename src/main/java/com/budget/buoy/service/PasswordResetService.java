@@ -5,9 +5,12 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.budget.buoy.authentication.AuthController;
 import com.budget.buoy.authentication.AuthProvider;
 import com.budget.buoy.authentication.PasswordResetOtp;
 import com.budget.buoy.authentication.PasswordResetOtpRepository;
@@ -24,8 +27,9 @@ public class PasswordResetService {
     private final PasswordResetOtpRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final TokenService tokenService; // ← added
+    private final TokenService tokenService;
     private final SecureRandom secureRandom = new SecureRandom();
+    private static final Logger logger = LoggerFactory.getLogger(PasswordResetService.class);
 
     public PasswordResetService(UserRepository userRepository,
             PasswordResetOtpRepository otpRepository,
@@ -86,6 +90,8 @@ public class PasswordResetService {
                             user.email(), passwordEncoder.encode(newPassword),
                             user.provider(), user.balance(), user.version());
                     userRepository.save(updated);
+                    logger.info("New pass {}", newPassword);
+                    logger.info("Password reset for user {}", updated);
                     return true;
                 })
                 .orElse(false);

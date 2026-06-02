@@ -51,6 +51,7 @@ public class AuthController {
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
             );
+            log.info("User {} logged in, {}", authentication, authRequest.getPassword());
             String token = tokenService.generateToken(authentication);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of("accessToken", token));
         } catch (AuthenticationException e) {
