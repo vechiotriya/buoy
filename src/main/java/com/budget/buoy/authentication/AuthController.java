@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.RestController;
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
@@ -49,10 +50,11 @@ public class AuthController {
     @PostMapping("/auth/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequest authRequest) {
         try {
-            log.info("User {} logged in, {}", authRequest, authRequest.getPassword());
-
+            User user = userRepository.findByUsername(authRequest.getUsername())
+                    .or(() -> userRepository.findByEmail(authRequest.getUsername()))
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
+                    new UsernamePasswordAuthenticationToken(user.username(), authRequest.getPassword()));
             String token = tokenService.generateToken(authentication);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of("accessToken", token));
         } catch (AuthenticationException e) {
