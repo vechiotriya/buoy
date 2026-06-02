@@ -18,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.RestController;
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.budget.buoy.exception.InvalidGoogleTokenException;
+import com.budget.buoy.exception.PasswordResetNotSupportedException;
 import com.budget.buoy.exception.ProviderMismatchException;
 import com.budget.buoy.service.TokenService;
 import com.budget.buoy.service.UserService;
@@ -111,9 +112,15 @@ public class AuthController {
 
     @PostMapping("/auth/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
-        log.info("Forgot password initiated {}", req);
-        passwordResetService.initiate(req.email());
-        return ResponseEntity.ok(Map.of("message", "If that email exists, a code was sent."));
+        try {
+            passwordResetService.initiate(req.email());
+
+            return ResponseEntity.ok(
+                    Map.of("message", "If that email exists, a code was sent."));
+        } catch (PasswordResetNotSupportedException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @PostMapping("/auth/verify-otp")
