@@ -25,6 +25,7 @@ public class InstagramService {
     @Value("${INSTAGRAM_REDIRECT_URI}")
     private String redirectUri;
 
+    
     private final RestTemplate restTemplate = new RestTemplate();
     private static final Logger logger = LoggerFactory.getLogger(InstagramService.class);
 
@@ -38,7 +39,9 @@ public class InstagramService {
         body.add("grant_type", "authorization_code");
         body.add("redirect_uri", redirectUri);
         body.add("code", code);
-
+logger.info("APP_ID = {}", clientId);
+logger.info("SECRET = {}", clientSecret);
+logger.info("REDIRECT = {}", redirectUri);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(
                 MediaType.APPLICATION_FORM_URLENCODED);
