@@ -90,8 +90,6 @@ public class PasswordResetService {
                             user.email(), passwordEncoder.encode(newPassword),
                             user.provider(), user.balance(), user.version());
                     userRepository.save(updated);
-                    logger.info("New pass {}", newPassword);
-                    logger.info("Password reset for user {}", updated);
                     return true;
                 })
                 .orElse(false);
