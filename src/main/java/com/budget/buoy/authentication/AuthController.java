@@ -134,8 +134,7 @@ public class AuthController {
             HttpServletResponse response) throws IOException {
 
         User user = userService.findOrCreateInstagramUser(
-                code
-                );
+                code);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user.username(),
@@ -145,7 +144,7 @@ public class AuthController {
         String jwt = tokenService.generateToken(authentication);
 
         response.sendRedirect(
-                "buoyapp://instagram-auth?token=" +
+                "buoyapp://?token=" +
                         URLEncoder.encode(jwt, StandardCharsets.UTF_8));
     }
 
