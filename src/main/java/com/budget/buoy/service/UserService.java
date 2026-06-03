@@ -59,7 +59,7 @@ public class UserService {
         User user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),
                 profile.username(),
                 profile.username(), null, profile.id() + "@instagram.local.com", null, AuthProvider.INSTAGRAM,
-                balance, null);
+                balance,null, null);
 
         return userRepository.save(user);
     }
@@ -111,7 +111,7 @@ public class UserService {
         String username = resolveUniqueUsername(baseUsername);
 
         User user = new User(id, fullName, username, null, email,
-                null, AuthProvider.GOOGLE, balance, null);
+                null, AuthProvider.GOOGLE, balance,null, null);
         return userRepository.save(user);
     }
 

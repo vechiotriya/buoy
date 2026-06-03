@@ -90,7 +90,7 @@ public class PasswordResetService {
                     User updated = new User(
                             user.id(), user.fullName(), user.username(), user.profile(),
                             user.email(), passwordEncoder.encode(newPassword),
-                            user.provider(), user.balance(), user.version());
+                            user.provider(), user.balance(),null, user.version());
                     userRepository.save(updated);
                     return true;
                 })

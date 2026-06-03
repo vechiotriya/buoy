@@ -27,6 +27,8 @@ public record User(
 
                 BigDecimal balance,
 
+                BudgetingStyle prefBudgetStyle, 
+
                 @Version Integer version) {
 
 }

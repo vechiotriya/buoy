@@ -40,6 +40,7 @@ public class UserController {
         userDetails.put("fullName", user.fullName());
         userDetails.put("balance", user.balance().toString());
         userDetails.put("profile", pfp);
+        userDetails.put("preferredBudgetStyle", user.prefBudgetStyle().toString());
         return userDetails;
     }
 
@@ -50,7 +51,7 @@ public class UserController {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         User updatedUser = new User(user.id(), body.fullName(), user.username(),user.profile(), user.email(), user.password(),
                 user.provider(),
-                user.balance(), user.version());
+                user.balance(),body.prefBudgetStyle(), user.version());
         userRepository.save(updatedUser);
         return ResponseEntity.ok(Map.of("message", "Profile name updated successfully"));
     }
@@ -78,7 +79,7 @@ public class UserController {
             User updatedUser = new User(user.id(), user.fullName(), user.username(),
                     result.get("secure_url") + " " + result.get("public_id"), user.email(), user.password(),
                     user.provider(),
-                    user.balance(), user.version());
+                    user.balance(),null, user.version());
             userRepository.save(updatedUser);
             return ResponseEntity.ok(Map.of(
                     "message", "Profile picture uploaded successfully.",
@@ -105,7 +106,7 @@ public class UserController {
              User updatedUser = new User(user.id(), user.fullName(), user.username(),
                     null, user.email(), user.password(),
                     user.provider(),
-                    user.balance(), user.version());
+                    user.balance(),null, user.version());
             userRepository.save(updatedUser);
             return ResponseEntity.ok(Map.of("message", "Profile picture deleted."));
         } catch (IOException e) {

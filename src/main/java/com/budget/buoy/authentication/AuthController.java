@@ -102,7 +102,7 @@ public class AuthController {
         // Encode the password before saving
         user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12), user.fullName(),
                 user.username(), null, user.email(), passwordEncoder.encode(user.password()), AuthProvider.LOCAL,
-                user.balance(), null);
+                user.balance(),null, null);
         userRepository.save(user);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("message", "User registered successfully"));

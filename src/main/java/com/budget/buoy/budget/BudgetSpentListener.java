@@ -39,7 +39,7 @@ public class BudgetSpentListener {
             User updatedUser = new User(currentUser.id(), currentUser.fullName(), currentUser.username(), currentUser.profile(), currentUser.email(),
                     currentUser.password(),
                     currentUser.provider(),
-                    newBalance, currentUser.version());
+                    newBalance,null, currentUser.version());
             userRepository.save(updatedUser);
     }
 
