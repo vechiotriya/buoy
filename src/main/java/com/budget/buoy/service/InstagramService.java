@@ -57,10 +57,7 @@ logger.info("REDIRECT = {}", redirectUri);
         logger.info("Access token:{} {}",tokenResponse, tokenResponse.access_token());
         String accessToken = tokenResponse.access_token();
 
-        String url =
-                "https://graph.instagram.com/me" +
-                "?fields=id,username" +
-                "&access_token=" + accessToken;
+        String url ="https://graph.instagram.com/v21.0/me?fields=id,username&access_token=" + accessToken;
         
         return restTemplate.getForObject(
                 url,
