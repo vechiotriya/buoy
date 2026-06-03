@@ -29,9 +29,8 @@ public class UserService {
 
     public UserService(UserRepository userRepository, InstagramService instagramService) {
         this.userRepository = userRepository;
-        this.instagramService = new InstagramService();
+        this.instagramService = instagramService;
     }
-
 
     public User findOrCreateGoogleUser(String idToken, BigDecimal balance) {
         GoogleIdToken.Payload payload = verifyGoogleToken(idToken);
@@ -41,61 +40,60 @@ public class UserService {
 
         return userRepository.findByEmail(email)
                 .map(existing -> assertGoogleUser(existing, email))
-                .orElseGet(() -> createGoogleUser(email, fullName,balance));
-    }
-    
-public User findOrCreateInstagramUser(
-        String code) {
-
-    InstagramProfile profile =
-            instagramService.getProfile(code);
-
-    String instagramUsername = profile.username();
-
-    Optional<User> existing =
-            userRepository.findByUsername(instagramUsername);
-
-    if (existing.isPresent()) {
-        return existing.get();
+                .orElseGet(() -> createGoogleUser(email, fullName, balance));
     }
 
-    User user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12), profile.username(),
-                profile.username(), null, profile.id()+"@instagram.local.com", null, AuthProvider.INSTAGRAM,
+    public User findOrCreateInstagramUser(
+            String code) {
+
+        InstagramProfile profile = instagramService.getProfile(code);
+
+        String instagramUsername = profile.username();
+
+        Optional<User> existing = userRepository.findByUsername(instagramUsername);
+
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        User user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),
+                profile.username(),
+                profile.username(), null, profile.id() + "@instagram.local.com", null, AuthProvider.INSTAGRAM,
                 BigDecimal.ZERO, null);
 
-    return userRepository.save(user);
-}
+        return userRepository.save(user);
+    }
 
     private GoogleIdToken.Payload verifyGoogleToken(String idToken) {
-    try {
-        String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+        try {
+            String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
 
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
 
-        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-            throw new InvalidGoogleTokenException("Token verification failed");
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new InvalidGoogleTokenException("Token verification failed");
+            }
+
+            Map<String, Object> body = response.getBody();
+
+            // If Google returned 200 with an email, the token is genuine
+            if (body.get("email") == null) {
+                throw new InvalidGoogleTokenException("No email in token");
+            }
+
+            GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
+            payload.setEmail((String) body.get("email"));
+            payload.set("name", body.get("name"));
+            return payload;
+
+        } catch (InvalidGoogleTokenException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("Token verification error: {}", e.getMessage());
+            throw new InvalidGoogleTokenException("Could not verify Google token");
         }
-
-        Map<String, Object> body = response.getBody();
-
-        // If Google returned 200 with an email, the token is genuine
-        if (body.get("email") == null) {
-            throw new InvalidGoogleTokenException("No email in token");
-        }
-
-        GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
-        payload.setEmail((String) body.get("email"));
-        payload.set("name", body.get("name"));
-        return payload;
-
-    } catch (InvalidGoogleTokenException e) {
-        throw e;
-    } catch (Exception e) {
-        logger.error("Token verification error: {}", e.getMessage());
-        throw new InvalidGoogleTokenException("Could not verify Google token");
     }
-}
 
     private User assertGoogleUser(User existing, String email) {
         // Prevent account hijacking: don't let Google auth take over a LOCAL account
@@ -112,7 +110,7 @@ public User findOrCreateInstagramUser(
         String baseUsername = email.split("@")[0];
         String username = resolveUniqueUsername(baseUsername);
 
-        User user = new User(id, fullName, username,null, email,
+        User user = new User(id, fullName, username, null, email,
                 null, AuthProvider.GOOGLE, balance, null);
         return userRepository.save(user);
     }
