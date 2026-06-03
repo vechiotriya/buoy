@@ -5,6 +5,7 @@ import com.budget.buoy.service.PasswordResetService;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -28,6 +29,8 @@ import com.budget.buoy.exception.PasswordResetNotSupportedException;
 import com.budget.buoy.exception.ProviderMismatchException;
 import com.budget.buoy.service.TokenService;
 import com.budget.buoy.service.UserService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -50,12 +53,13 @@ public class AuthController {
     private final UserService userService;
     private final InstagramService instagramService;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper;
     @Value("${INSTAGRAM_VERIFY_TOKEN}")
     private String verifyToken;
 
     public AuthController(TokenService tokenService, AuthenticationManager authenticationManager,
             UserRepository userRepository, PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
-            InstagramService instagramService) {
+            InstagramService instagramService, ObjectMapper objectMapper) {
         this.tokenService = tokenService;
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
@@ -63,6 +67,7 @@ public class AuthController {
         this.instagramService = new InstagramService();
         this.userService = new UserService(userRepository, instagramService);
         this.passwordResetService = passwordResetService;
+        this.objectMapper = objectMapper;
     }
 
     // Endpoint for user login
@@ -131,10 +136,14 @@ public class AuthController {
     @GetMapping("/auth/instagram/callback")
     public void callback(
             @RequestParam("code") String code,
+            @RequestParam("state") String state,
             HttpServletResponse response) throws IOException {
 
+        String decodedState = URLDecoder.decode(state, StandardCharsets.UTF_8);
+        JsonNode stateJson = objectMapper.readTree(decodedState);
+        BigDecimal balance = new BigDecimal(stateJson.get("balance").asText());
         User user = userService.findOrCreateInstagramUser(
-                code);
+                code,balance);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user.username(),

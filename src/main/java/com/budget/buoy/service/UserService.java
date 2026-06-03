@@ -44,7 +44,7 @@ public class UserService {
     }
 
     public User findOrCreateInstagramUser(
-            String code) {
+            String code, BigDecimal balance) {
 
         InstagramProfile profile = instagramService.getProfile(code);
 
@@ -59,7 +59,7 @@ public class UserService {
         User user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),
                 profile.username(),
                 profile.username(), null, profile.id() + "@instagram.local.com", null, AuthProvider.INSTAGRAM,
-                BigDecimal.ZERO, null);
+                balance, null);
 
         return userRepository.save(user);
     }
