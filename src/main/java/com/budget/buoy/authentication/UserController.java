@@ -40,7 +40,7 @@ public class UserController {
         userDetails.put("fullName", user.fullName());
         userDetails.put("balance", user.balance().toString());
         userDetails.put("profile", pfp);
-        userDetails.put("preferredBudgetStyle", user.prefBudgetStyle().toString());
+        userDetails.put("preferredBudgetStyle",user.email()==null?"": user.prefBudgetStyle().toString());
         return userDetails;
     }
 
