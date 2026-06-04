@@ -3,10 +3,13 @@ package com.budget.buoy.authentication;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.budget.buoy.budget.Budget;
+import com.budget.buoy.budget.BudgetRepository;
 import com.budget.buoy.service.CloudinaryService;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -24,11 +27,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class UserController {
     private final CloudinaryService cloudinaryService;
     private final UserRepository userRepository;
+    private final BudgetRepository budgetRepository;
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
-    public UserController(UserRepository userRepository, CloudinaryService cloudinaryService) {
+    public UserController(UserRepository userRepository, CloudinaryService cloudinaryService,
+            BudgetRepository budgetRepository) {
         this.userRepository = userRepository;
         this.cloudinaryService = cloudinaryService;
+        this.budgetRepository = budgetRepository;
     }
 
     @GetMapping("/user-info")
@@ -60,8 +66,9 @@ public class UserController {
         log.info("Budget changed", user.prefBudgetStyle(), body.prefBudgetStyle());
 
         if (user.prefBudgetStyle() != body.prefBudgetStyle()) {
+            List<Budget> budgets = budgetRepository.findByUserId(user.id()  );
+            budgetRepository.deleteAll(budgets);
             log.info("Budget style changed", user.prefBudgetStyle(), body.prefBudgetStyle());
-            userRepository.deleteById(user.id());
         }
 
         userRepository.save(updatedUser);
