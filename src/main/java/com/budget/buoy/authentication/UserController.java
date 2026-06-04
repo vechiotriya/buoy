@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -22,8 +24,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class UserController {
     private final CloudinaryService cloudinaryService;
     private final UserRepository userRepository;
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
-    public UserController(UserRepository userRepository,CloudinaryService cloudinaryService) {
+    public UserController(UserRepository userRepository, CloudinaryService cloudinaryService) {
         this.userRepository = userRepository;
         this.cloudinaryService = cloudinaryService;
     }
@@ -34,13 +37,14 @@ public class UserController {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         Map<String, String> userDetails = new HashMap<>();
-        String pfp=user.profile()==null?"":user.profile().split(" ")[0];
+        String pfp = user.profile() == null ? "" : user.profile().split(" ")[0];
         userDetails.put("username", user.username());
         userDetails.put("email", user.email());
         userDetails.put("fullName", user.fullName());
         userDetails.put("balance", user.balance().toString());
         userDetails.put("profile", pfp);
-        userDetails.put("preferredBudgetStyle",user.prefBudgetStyle()==null?"": user.prefBudgetStyle().toString());
+        userDetails.put("preferredBudgetStyle",
+                user.prefBudgetStyle() == null ? "" : user.prefBudgetStyle().toString());
         return userDetails;
     }
 
@@ -49,11 +53,19 @@ public class UserController {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        User updatedUser = new User(user.id(), body.fullName(), user.username(),user.profile(), user.email(), user.password(),
+        User updatedUser = new User(user.id(), body.fullName(), user.username(), user.profile(), user.email(),
+                user.password(),
                 user.provider(),
-                user.balance(),body.prefBudgetStyle(), user.version());
+                user.balance(), body.prefBudgetStyle(), user.version());
+        log.info("Budget changed", user.prefBudgetStyle(), body.prefBudgetStyle());
+
+        if (user.prefBudgetStyle() != body.prefBudgetStyle()) {
+            log.info("Budget style changed", user.prefBudgetStyle(), body.prefBudgetStyle());
+            userRepository.deleteById(user.id());
+        }
+
         userRepository.save(updatedUser);
-        return ResponseEntity.ok(Map.of("message", "Profile name updated successfully"));
+        return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
     }
 
     @PostMapping("/profile/picture")
@@ -79,7 +91,7 @@ public class UserController {
             User updatedUser = new User(user.id(), user.fullName(), user.username(),
                     result.get("secure_url") + " " + result.get("public_id"), user.email(), user.password(),
                     user.provider(),
-                    user.balance(),null, user.version());
+                    user.balance(), null, user.version());
             userRepository.save(updatedUser);
             return ResponseEntity.ok(Map.of(
                     "message", "Profile picture uploaded successfully.",
@@ -101,12 +113,13 @@ public class UserController {
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-            if(user.profile()==null) return ResponseEntity.ok(Map.of("message", "No profile picture to delete."));
+            if (user.profile() == null)
+                return ResponseEntity.ok(Map.of("message", "No profile picture to delete."));
             cloudinaryService.deleteProfilePicture(user.profile().split(" ")[1]);
-             User updatedUser = new User(user.id(), user.fullName(), user.username(),
+            User updatedUser = new User(user.id(), user.fullName(), user.username(),
                     null, user.email(), user.password(),
                     user.provider(),
-                    user.balance(),null, user.version());
+                    user.balance(), null, user.version());
             userRepository.save(updatedUser);
             return ResponseEntity.ok(Map.of("message", "Profile picture deleted."));
         } catch (IOException e) {
