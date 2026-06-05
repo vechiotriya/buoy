@@ -66,7 +66,7 @@ public class UserController {
         log.info("Budget changed", user.prefBudgetStyle(), body.prefBudgetStyle());
 
         if (user.prefBudgetStyle() != body.prefBudgetStyle()) {
-            List<Budget> budgets = budgetRepository.findByUserId(user.id()  );
+            List<Budget> budgets = budgetRepository.findByUserId(user.id());
             budgetRepository.deleteAll(budgets);
             log.info("Budget style changed", user.prefBudgetStyle(), body.prefBudgetStyle());
         }
