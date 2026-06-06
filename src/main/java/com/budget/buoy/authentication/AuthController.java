@@ -12,6 +12,7 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 
+import org.hibernate.validator.internal.util.logging.Log_.logger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -74,14 +75,17 @@ public class AuthController {
     @PostMapping("/auth/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequest authRequest) {
         try {
+            log.info("Logging in user {} {}", authRequest.getUsername(),authRequest.getPassword());
             User user = userRepository.findByUsername(authRequest.getUsername())
                     .or(() -> userRepository.findByEmail(authRequest.getUsername()))
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.username(), authRequest.getPassword()));
+                    log.info("Authentication successful for user {}", authentication.getName());
             String token = tokenService.generateToken(authentication);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of("accessToken", token));
         } catch (AuthenticationException e) {
+            log.error("Authentication failed", e);
             return ResponseEntity.status(401).contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("error", "Invalid credentials"));
         }
