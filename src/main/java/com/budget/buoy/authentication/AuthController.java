@@ -74,13 +74,8 @@ public class AuthController {
     @PostMapping("/auth/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequest authRequest) {
         try {
-            log.info("Logging in user {} {}", authRequest.getUsername(),authRequest.getPassword());
-            User user = userRepository.findByUsername(authRequest.getUsername())
-                    .or(() -> userRepository.findByEmail(authRequest.getUsername()))
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(user.username(), authRequest.getPassword()));
-                    log.info("Authentication successful for user {}", authentication.getName());
+                    new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
             String token = tokenService.generateToken(authentication);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of("accessToken", token));
         } catch (AuthenticationException e) {
@@ -105,7 +100,7 @@ public class AuthController {
         // Encode the password before saving
         user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12), user.fullName(),
                 user.username(), null, user.email(), passwordEncoder.encode(user.password()), AuthProvider.LOCAL,
-                user.balance(),null, null);
+                user.balance(), null, null);
         userRepository.save(user);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("message", "User registered successfully"));
@@ -146,7 +141,7 @@ public class AuthController {
         JsonNode stateJson = objectMapper.readTree(decodedState);
         BigDecimal balance = new BigDecimal(stateJson.get("balance").asText());
         User user = userService.findOrCreateInstagramUser(
-                code,balance);
+                code, balance);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user.username(),
