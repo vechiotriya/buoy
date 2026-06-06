@@ -79,7 +79,7 @@ public class AuthController {
             String token = tokenService.generateToken(authentication);
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of("accessToken", token));
         } catch (AuthenticationException e) {
-            log.error("Authentication failed", e);
+            log.error("Authentication failed: {} {}", e.getMessage(), e);
             return ResponseEntity.status(401).contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("error", "Invalid credentials"));
         }
