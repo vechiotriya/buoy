@@ -12,7 +12,6 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 
-import org.hibernate.validator.internal.util.logging.Log_.logger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
