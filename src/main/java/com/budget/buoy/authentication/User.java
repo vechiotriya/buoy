@@ -29,6 +29,8 @@ public record User(
 
                 BudgetingStyle prefBudgetStyle, 
 
+                @Nullable String fcmToken,  
+
                 @Version Integer version) {
 
 }

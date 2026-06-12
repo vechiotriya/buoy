@@ -21,7 +21,6 @@ public class BudgetService {
     private final Application application;
     TransactionRepository transactionRepository;
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
-
     public BudgetService(TransactionRepository transactionRepository, Application application) {
         this.transactionRepository = transactionRepository;
         this.application = application;

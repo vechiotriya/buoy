@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.budget.buoy.budget.Budget;
 import com.budget.buoy.budget.BudgetRepository;
 import com.budget.buoy.service.CloudinaryService;
+import com.budget.buoy.service.UserService;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -20,6 +21,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -28,13 +30,15 @@ public class UserController {
     private final CloudinaryService cloudinaryService;
     private final UserRepository userRepository;
     private final BudgetRepository budgetRepository;
+    private final UserService userService;
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     public UserController(UserRepository userRepository, CloudinaryService cloudinaryService,
-            BudgetRepository budgetRepository) {
+            BudgetRepository budgetRepository, UserService userService) {
         this.userRepository = userRepository;
         this.cloudinaryService = cloudinaryService;
         this.budgetRepository = budgetRepository;
+        this.userService = userService;
     }
 
     @GetMapping("/user-info")
@@ -62,7 +66,7 @@ public class UserController {
         User updatedUser = new User(user.id(), body.fullName(), user.username(), user.profile(), user.email(),
                 user.password(),
                 user.provider(),
-                user.balance(), body.prefBudgetStyle(), user.version());
+                user.balance(), body.prefBudgetStyle(), user.fcmToken(), user.version());
         log.info("Budget changed", user.prefBudgetStyle(), body.prefBudgetStyle());
 
         if (user.prefBudgetStyle() != body.prefBudgetStyle()) {
@@ -98,7 +102,7 @@ public class UserController {
             User updatedUser = new User(user.id(), user.fullName(), user.username(),
                     result.get("secure_url") + " " + result.get("public_id"), user.email(), user.password(),
                     user.provider(),
-                    user.balance(), null, user.version());
+                    user.balance(), user.prefBudgetStyle(), user.fcmToken(), user.version());
             userRepository.save(updatedUser);
             return ResponseEntity.ok(Map.of(
                     "message", "Profile picture uploaded successfully.",
@@ -126,7 +130,7 @@ public class UserController {
             User updatedUser = new User(user.id(), user.fullName(), user.username(),
                     null, user.email(), user.password(),
                     user.provider(),
-                    user.balance(), null, user.version());
+                    user.balance(), user.prefBudgetStyle(), user.fcmToken(), user.version());
             userRepository.save(updatedUser);
             return ResponseEntity.ok(Map.of("message", "Profile picture deleted."));
         } catch (IOException e) {
@@ -135,4 +139,12 @@ public class UserController {
         }
     }
 
+    @PutMapping("/fcm-token")
+    public ResponseEntity<?> updateFcmToken(
+            @RequestBody Map<String, String> body
+    ) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        userService.updateFcmToken(username, body.get("fcmToken"));
+        return ResponseEntity.ok().build();
+    }
 }

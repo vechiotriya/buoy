@@ -87,7 +87,7 @@ public class UserService {
         String username = resolveUniqueUsername(baseUsername);
 
         User user = new User(id, fullName, username, null, email,
-                null, AuthProvider.GOOGLE, balance,null, null);
+                null, AuthProvider.GOOGLE, balance,null,null, null);
         return userRepository.save(user);
     }
 
@@ -101,4 +101,22 @@ public class UserService {
         } while (userRepository.existsByUsername(candidate));
         return candidate;
     }
+
+    public void updateFcmToken(String username, String fcmToken) {
+    User user = userRepository.findByUsername(username).orElseThrow(() -> new IllegalArgumentException("User not found"));
+    User updated = new User(
+        user.id(),
+        user.fullName(),
+        user.username(),
+        user.profile(),
+        user.email(),
+        user.password(),
+        user.provider(),
+        user.balance(),
+        user.prefBudgetStyle(),
+        fcmToken,           
+        user.version()
+    );
+    userRepository.save(updated);
+}
 }
