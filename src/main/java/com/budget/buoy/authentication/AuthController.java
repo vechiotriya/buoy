@@ -1,6 +1,5 @@
 package com.budget.buoy.authentication;
 
-import com.budget.buoy.service.InstagramService;
 import com.budget.buoy.service.PasswordResetService;
 
 import java.io.IOException;
@@ -51,21 +50,17 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final UserService userService;
-    private final InstagramService instagramService;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
-    @Value("${INSTAGRAM_VERIFY_TOKEN}")
-    private String verifyToken;
 
     public AuthController(TokenService tokenService, AuthenticationManager authenticationManager,
             UserRepository userRepository, PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
-            InstagramService instagramService, ObjectMapper objectMapper) {
+             ObjectMapper objectMapper) {
         this.tokenService = tokenService;
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.instagramService = new InstagramService();
-        this.userService = new UserService(userRepository, instagramService);
+        this.userService = new UserService(userRepository);
         this.passwordResetService = passwordResetService;
         this.objectMapper = objectMapper;
     }
@@ -131,29 +126,6 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/auth/instagram/callback")
-    public void callback(
-            @RequestParam("code") String code,
-            @RequestParam("state") String state,
-            HttpServletResponse response) throws IOException {
-
-        String decodedState = URLDecoder.decode(state, StandardCharsets.UTF_8);
-        JsonNode stateJson = objectMapper.readTree(decodedState);
-        BigDecimal balance = new BigDecimal(stateJson.get("balance").asText());
-        User user = userService.findOrCreateInstagramUser(
-                code, balance);
-
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                user.username(),
-                null,
-                List.of());
-
-        String jwt = tokenService.generateToken(authentication);
-
-        response.sendRedirect(
-                "buoyapp://?token=" +
-                        URLEncoder.encode(jwt, StandardCharsets.UTF_8));
-    }
 
     @PostMapping("/auth/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
@@ -183,20 +155,4 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
         return ResponseEntity.status(400).body(Map.of("error", "Invalid or expired reset token"));
     }
-
-    @GetMapping("/webhooks/instagram")
-    public ResponseEntity<String> verify(
-            @RequestParam("hub.mode") String mode,
-            @RequestParam("hub.verify_token") String token,
-            @RequestParam("hub.challenge") String challenge) {
-
-        if ("subscribe".equals(mode)
-                && verifyToken.equals(token)) {
-            return ResponseEntity.ok(challenge);
-        }
-
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body("Invalid token");
-    }
-
 }

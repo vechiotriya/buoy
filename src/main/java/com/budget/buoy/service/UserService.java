@@ -13,7 +13,6 @@ import org.springframework.web.client.RestTemplate;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.budget.buoy.authentication.AuthProvider;
-import com.budget.buoy.authentication.InstagramProfile;
 import com.budget.buoy.authentication.User;
 import com.budget.buoy.authentication.UserRepository;
 import com.budget.buoy.exception.InvalidGoogleTokenException;
@@ -24,12 +23,10 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final InstagramService instagramService;
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
-    public UserService(UserRepository userRepository, InstagramService instagramService) {
+    public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.instagramService = instagramService;
     }
 
     public User findOrCreateGoogleUser(String idToken, BigDecimal balance) {
@@ -41,27 +38,6 @@ public class UserService {
         return userRepository.findByEmail(email)
                 .map(existing -> assertGoogleUser(existing, email))
                 .orElseGet(() -> createGoogleUser(email, fullName, balance));
-    }
-
-    public User findOrCreateInstagramUser(
-            String code, BigDecimal balance) {
-
-        InstagramProfile profile = instagramService.getProfile(code);
-
-        String instagramUsername = profile.username();
-
-        Optional<User> existing = userRepository.findByUsername(instagramUsername);
-
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-
-        User user = new User(NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 12),
-                profile.username(),
-                profile.username(), null, profile.id() + "@instagram.local.com", null, AuthProvider.INSTAGRAM,
-                balance,null, null);
-
-        return userRepository.save(user);
     }
 
     private GoogleIdToken.Payload verifyGoogleToken(String idToken) {
