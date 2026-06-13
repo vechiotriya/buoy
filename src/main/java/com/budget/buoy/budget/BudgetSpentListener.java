@@ -62,7 +62,7 @@ public class BudgetSpentListener {
                 }
                 else if(spentPercentage>=80 && spentPercentage<100){
                     log.info("{} % of Budget spent {}",spentPercentage, budget.name());
-                    fcmService.sendNotification(updatedUser.fcmToken(), "Budget Alert🚨", "You have spent "+spentPercentage+" of your budget for " + budget.name()+", Stop spending already😒");
+                    fcmService.sendNotification(updatedUser.fcmToken(), "Budget Alert🚨", "You have spent "+spentPercentage+"% of your budget for " + budget.name()+", Stop spending already😒");
                 }
             }
 
