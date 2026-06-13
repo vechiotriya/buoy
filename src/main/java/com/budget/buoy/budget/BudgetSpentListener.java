@@ -58,11 +58,15 @@ public class BudgetSpentListener {
                 int spentPercentage=totalSpent.divide(budget.amount()).multiply(BigDecimal.valueOf(100)).intValue();
                 if (spentPercentage >=60 && spentPercentage < 80) {
                     log.info("{} % of Budget spent {}",spentPercentage, budget.name());
-                    fcmService.sendNotification(updatedUser.fcmToken(), "Budget Alert⚠️", "You have spent more than half of your budget for " + budget.name()+", You better watch out👀");
+                    fcmService.sendNotification(updatedUser.fcmToken(), "Just a Nudge! 👀", "You're past the halfway mark on your " + budget.name() + " budget. Keep an eye on things!");
                 }
                 else if(spentPercentage>=80 && spentPercentage<100){
                     log.info("{} % of Budget spent {}",spentPercentage, budget.name());
-                    fcmService.sendNotification(updatedUser.fcmToken(), "Budget Alert🚨", "You have spent "+spentPercentage+"% of your budget for " + budget.name()+", Stop spending already😒");
+                    fcmService.sendNotification(updatedUser.fcmToken(), "Almost There! 😬", "You have spent "+spentPercentage+"% of your budget for " + budget.name()+", Stop spending already😒");
+                }
+                else if(spentPercentage>100){
+                    log.info("{} % of Budget spent {}",spentPercentage, budget.name());
+                    fcmService.sendNotification(updatedUser.fcmToken(), "Budget All Used Up! 🙈", "Looks like your " + budget.name() + " budget is officially empty. Time to revisit your plan! 💡");
                 }
             }
 
