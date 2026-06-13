@@ -145,7 +145,7 @@ public class UserController {
     ) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         log.info("Body: {}",body);
-        log.info("{} Token updated for user: {}",body.get("fcmToken"), username);
+        log.info("Token updated for user: {}", username);
         userService.updateFcmToken(username, body.get("fcmToken"));
         return ResponseEntity.ok().build();
     }
