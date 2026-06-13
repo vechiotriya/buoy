@@ -341,7 +341,6 @@ public class TransactionController {
                                                 Collectors.reducing(BigDecimal.ZERO, Transaction::amount,
                                                                 BigDecimal::add)));
 
-                logger.info("dailySums for last week: {}", dailySums);
 
                 String[] labels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
                 List<GraphData> barData = new ArrayList<>();

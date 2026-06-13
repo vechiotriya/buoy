@@ -103,7 +103,6 @@ public class UserService {
     }
 
     public void updateFcmToken(String username, String fcmToken) {
-    logger.info("biss {}",fcmToken);
     User user = userRepository.findByUsername(username).orElseThrow(() -> new IllegalArgumentException("User not found"));
     User updated = new User(
         user.id(),

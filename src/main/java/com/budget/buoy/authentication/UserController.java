@@ -144,8 +144,6 @@ public class UserController {
             @RequestBody Map<String, String> body
     ) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        log.info("Body: {}",body);
-        log.info("Token updated for user: {}", username);
         userService.updateFcmToken(username, body.get("fcmToken"));
         return ResponseEntity.ok().build();
     }

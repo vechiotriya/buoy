@@ -18,13 +18,10 @@ public class FirebaseConfig {
 public FirebaseApp firebaseApp() throws IOException {
     if (FirebaseApp.getApps().isEmpty()) {
         File file = new File("/etc/secrets/buoy-7cadf-firebase-adminsdk-fbsvc-a484d9e799.json");
-        System.out.println("File exists: " + file.exists());
-        System.out.println("File size: " + file.length());
 
         FileInputStream serviceAccount = new FileInputStream(file);
 
         GoogleCredentials credentials = GoogleCredentials.fromStream(serviceAccount);
-        System.out.println("Credentials loaded: " + credentials); // 👈 confirm credentials loaded
 
         FirebaseOptions options = FirebaseOptions.builder()
             .setCredentials(credentials)
