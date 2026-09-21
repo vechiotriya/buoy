@@ -32,121 +32,108 @@ import jakarta.validation.Valid;
 @RestController
 public class CategoryController {
 
-    private final CategoryRepository categoryRepository;
-    private final UserRepository userRepository;
-    private final TransactionRepository transactionRepository;
+        private final CategoryRepository categoryRepository;
+        private final UserRepository userRepository;
+        private final TransactionRepository transactionRepository;
 
-    record TransactionCategoryGroup(BigDecimal value, String text) {
-    }
-
-    // get current logged in user's id
-    private String getCurrentUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"))
-                .id();
-    }
-
-    public CategoryController(CategoryRepository categoryRepository, UserRepository userRepository,
-            TransactionRepository transactionRepository) {
-        this.categoryRepository = categoryRepository;
-        this.userRepository = userRepository;
-        this.transactionRepository = transactionRepository;
-    }
-
-    // Get all categories for the current user
-    @GetMapping("/categories")
-    public List<Category> getAllCategories() {
-        String userId = getCurrentUser();
-        return categoryRepository.findByUserId(userId);
-    }
-
-    // Add a new category for the current user
-    @ResponseStatus(HttpStatus.CREATED)
-    @PostMapping("/categories/add")
-    public ResponseEntity<?> addCategory(@Valid @RequestBody Category category) {
-        String userId = getCurrentUser();
-        if (categoryRepository.existsByNameAndUserId(category.name(), userId)) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Category with this name already exists for the user"));
-        }
-        Category newCategory = new Category(
-                NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
-                userId,
-                category.name(),
-                category.version());
-        categoryRepository.save(newCategory);
-        return ResponseEntity.ok().body(Map.of("message", "Category added for: " + newCategory.userId()));
-    }
-
-    @GetMapping("/categories/transactions")
-    public ResponseEntity<?> getExpensePercentByCategory() {
-        String userId = getCurrentUser();
-        WeekFields weekFields = WeekFields.ISO;
-        LocalDate today = LocalDate.now();
-        int currentWeek = today.get(weekFields.weekOfWeekBasedYear());
-        int currentYear = today.getYear();
-
-        List<Transaction> expenses = transactionRepository.findByUserId(userId)
-                .stream()
-                .filter(t -> t.transactionType().equals(TransactionType.Expense))
-                .filter(t -> {
-                    int week = t.transaction_date().get(weekFields.weekOfWeekBasedYear());
-                    int year = t.transaction_date().getYear();
-                    return week == currentWeek && year == currentYear;
-                })
-                .toList();
-        List<Transaction> expensesYearly = transactionRepository.findByUserId(userId).stream()
-                .filter(t -> t.transactionType() == TransactionType.Expense)
-                .collect(Collectors.toList());
-        // Calculate grand total
-        BigDecimal grandTotal = expenses.stream()
-                .map(Transaction::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal grandTotalYearly = expensesYearly.stream()
-                .map(Transaction::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (grandTotal.compareTo(BigDecimal.ZERO) == 0) {
-            return ResponseEntity.ok(Collections.emptyList());
+        record TransactionCategoryGroup(BigDecimal value, String text) {
         }
 
-        List<TransactionCategoryGroup> weeklyResult = expenses.stream()
-                .collect(Collectors.groupingBy(Transaction::category))
-                .entrySet()
-                .stream()
-                .map(entry -> {
-                    BigDecimal total = entry.getValue().stream()
-                            .map(Transaction::amount)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // get current logged in user's id
+        private String getCurrentUser() {
+                String username = SecurityContextHolder.getContext().getAuthentication().getName();
+                return userRepository.findByUsername(username)
+                                .orElseThrow(() -> new UsernameNotFoundException("User not found"))
+                                .id();
+        }
 
-                    BigDecimal percent = total
-                            .divide(grandTotal, 4, RoundingMode.HALF_UP)
-                            .multiply(BigDecimal.valueOf(100));
+        public CategoryController(CategoryRepository categoryRepository, UserRepository userRepository,
+                        TransactionRepository transactionRepository) {
+                this.categoryRepository = categoryRepository;
+                this.userRepository = userRepository;
+                this.transactionRepository = transactionRepository;
+        }
 
-                    return new TransactionCategoryGroup(percent, entry.getKey().toString());
-                })
-                .collect(Collectors.toList());
-        List<TransactionCategoryGroup> yearlyResult = expensesYearly.stream()
-                .collect(Collectors.groupingBy(Transaction::category))
-                .entrySet()
-                .stream()
-                .map(entry -> {
-                    BigDecimal total = entry.getValue().stream()
-                            .map(Transaction::amount)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Get all categories for the current user
+        @GetMapping("/categories")
+        public List<Category> getAllCategories() {
+                String userId = getCurrentUser();
+                return categoryRepository.findByUserId(userId);
+        }
 
-                    BigDecimal percent = total
-                            .divide(grandTotalYearly, 4, RoundingMode.HALF_UP)
-                            .multiply(BigDecimal.valueOf(100));
+        // Add a new category for the current user
+        @ResponseStatus(HttpStatus.CREATED)
+        @PostMapping("/categories/add")
+        public ResponseEntity<?> addCategory(@Valid @RequestBody Category category) {
+                String userId = getCurrentUser();
+                if (categoryRepository.existsByNameAndUserId(category.name(), userId)) {
+                        return ResponseEntity.badRequest()
+                                        .body(Map.of("error", "Category with this name already exists for the user"));
+                }
+                Category newCategory = new Category(
+                                NanoIdUtils.randomNanoId(new SecureRandom(), NanoIdUtils.DEFAULT_ALPHABET, 18),
+                                userId,
+                                category.name(),
+                                category.version());
+                categoryRepository.save(newCategory);
+                return ResponseEntity.ok().body(Map.of("message", "Category added for: " + newCategory.userId()));
+        }
 
-                    return new TransactionCategoryGroup(percent, entry.getKey().toString());
-                })
-                .collect(Collectors.toList());
+        @GetMapping("/categories/transactions")
+        public ResponseEntity<?> getExpensePercentByCategory() {
+                String userId = getCurrentUser();
+                WeekFields weekFields = WeekFields.ISO;
+                LocalDate today = LocalDate.now();
+                int currentWeek = today.get(weekFields.weekOfWeekBasedYear());
+                int currentWeekYear = today.get(weekFields.weekBasedYear());
 
-        Map<String, List<TransactionCategoryGroup>> result = new HashMap<>();
-        result.put("week", weeklyResult);
-        result.put("year", yearlyResult);
-        return ResponseEntity.ok(result);
-    }
+                // Single DB fetch
+                List<Transaction> allExpenses = transactionRepository.findByUserId(userId)
+                                .stream()
+                                .filter(t -> t.transactionType() == TransactionType.Expense)
+                                .toList();
+
+                List<Transaction> weeklyExpenses = allExpenses.stream()
+                                .filter(t -> {
+                                        LocalDate d = t.transaction_date();
+                                        return d.get(weekFields.weekOfWeekBasedYear()) == currentWeek
+                                                        && d.get(weekFields.weekBasedYear()) == currentWeekYear;
+                                })
+                                .toList();
+
+                List<Transaction> yearlyExpenses = allExpenses.stream()
+                                .filter(t -> t.transaction_date().getYear() == today.getYear())
+                                .toList();
+
+                Map<String, List<TransactionCategoryGroup>> result = new HashMap<>();
+                result.put("week", percentByCategory(weeklyExpenses));
+                result.put("year", percentByCategory(yearlyExpenses));
+                return ResponseEntity.ok(result);
+        }
+
+        private static final String UNCATEGORIZED = "Uncategorized";
+
+        private List<TransactionCategoryGroup> percentByCategory(List<Transaction> expenses) {
+                BigDecimal grandTotal = expenses.stream()
+                                .map(Transaction::amount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                if (grandTotal.compareTo(BigDecimal.ZERO) == 0) {
+                        return List.of();
+                }
+
+                Map<String, BigDecimal> totalsByCategory = expenses.stream()
+                                .collect(Collectors.groupingBy(
+                                                t -> t.category() == null ? UNCATEGORIZED : t.category().toString(),
+                                                Collectors.reducing(BigDecimal.ZERO, Transaction::amount,
+                                                                BigDecimal::add)));
+
+                return totalsByCategory.entrySet().stream()
+                                .map(e -> new TransactionCategoryGroup(
+                                                e.getValue()
+                                                                .divide(grandTotal, 4, RoundingMode.HALF_UP)
+                                                                .multiply(BigDecimal.valueOf(100)),
+                                                e.getKey()))
+                                .toList();
+        }
 }
